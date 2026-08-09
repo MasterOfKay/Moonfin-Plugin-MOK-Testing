@@ -117,11 +117,16 @@ public class AnimeFillerController : ControllerBase
 
             try
             {
-                var entry = await _fetchService.FetchAsync(mapping.Lookup.MalId, cancellationToken).ConfigureAwait(false);
-                if (entry != null)
+                var result = await _fetchService.FetchAsync(mapping.Lookup.MalId, cancellationToken).ConfigureAwait(false);
+                if (result.Entry != null)
                 {
-                    _cacheService.Set(mapping.Lookup.MalId, entry);
+                    _cacheService.Set(mapping.Lookup.MalId, result.Entry);
                     fetchedAny = true;
+                }
+                else if (result.Status == AnimeFillerFetchService.FillerFetchStatus.Blocked)
+                {
+                    // The upstream API refused to serve this entry, or we are being throttled.
+                    break;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

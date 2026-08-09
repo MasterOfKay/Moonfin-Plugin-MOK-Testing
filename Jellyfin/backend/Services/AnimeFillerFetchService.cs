@@ -43,7 +43,7 @@ public class AnimeFillerFetchService
     /// <summary>
     /// Fetches the filler and recap episode information for a given MyAnimeList ID.
     /// </summary>
-    public async Task<AnimeFillerCacheEntry?> FetchAsync(int malId, CancellationToken cancellationToken)
+    public async Task<FillerFetchResult> FetchAsync(int malId, CancellationToken cancellationToken)
     {
         var flagged = new List<AnimeFillerEpisode>();
         var episodeCount = 0;
@@ -53,24 +53,30 @@ public class AnimeFillerFetchService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var response = await GetEpisodePageAsync(malId, page, cancellationToken).ConfigureAwait(false);
+            var (response, blocked) = await GetEpisodePageAsync(malId, page, cancellationToken).ConfigureAwait(false);
             if (response == null)
             {
+                // The API refused to serve this entry, or we are being throttled. Either way, stop here.
+                if (blocked)
+                {
+                    return FillerFetchResult.Blocked();
+                }
+
                 // Failing on page 1 leaves nothing worth keeping. Yeeeeet
                 if (page == 1)
                 {
-                    return null;
+                    return FillerFetchResult.Unavailable();
                 }
 
                 // Failing on a later page leaves the earlier pages, so keep them as a partial result.
                 _logger.LogDebug("Jikan returned only {Count} episodes for MAL {MalId}, keeping them as partial", episodeCount, malId);
 
-                return new AnimeFillerCacheEntry
+                return FillerFetchResult.Ok(new AnimeFillerCacheEntry
                 {
                     Episodes = flagged,
                     EpisodeCount = episodeCount,
                     Partial = true
-                };
+                });
             }
 
             foreach (var episode in response.Data)
@@ -96,11 +102,11 @@ public class AnimeFillerFetchService
             page++;
         }
 
-        return new AnimeFillerCacheEntry
+        return FillerFetchResult.Ok(new AnimeFillerCacheEntry
         {
             Episodes = flagged,
             EpisodeCount = episodeCount
-        };
+        });
     }
 
     /// <summary>
@@ -109,18 +115,20 @@ public class AnimeFillerFetchService
     private const int MaxAttemptsPerPage = 3;
     private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(30);
 
-    private async Task<JikanEpisodesResponse?> GetEpisodePageAsync(int malId, int page, CancellationToken cancellationToken)
+    /// <summary>
+    /// Used when we are throttled but told no Retry-After.
+    /// </summary>
+    private static readonly TimeSpan DefaultThrottleWait = TimeSpan.FromSeconds(10);
+
+    private async Task<(JikanEpisodesResponse? Page, bool Blocked)> GetEpisodePageAsync(
+        int malId, int page, CancellationToken cancellationToken)
     {
         var url = $"{ApiBase}/anime/{malId}/episodes?page={page}";
+        var lastStatus = 0;
+        var blocked = false;
 
         for (var attempt = 0; attempt < MaxAttemptsPerPage; attempt++)
         {
-            if (attempt > 0)
-            {
-                // Increasing backoff: 4s, 8s, 12s. Upstream hiccups usually clear inside that.
-                await Task.Delay(TimeSpan.FromSeconds(4 * attempt), cancellationToken).ConfigureAwait(false);
-            }
-
             await WaitForSlotAsync(cancellationToken).ConfigureAwait(false);
 
             try
@@ -130,54 +138,64 @@ public class AnimeFillerFetchService
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("Moonfin/1.0");
 
                 using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                lastStatus = (int)response.StatusCode;
 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     // The mapping pointed at an id MAL does not serve. Not retryable.
                     _logger.LogDebug("Jikan has no entry for MAL {MalId}", malId);
-                    return null;
+                    return (null, false);
                 }
 
-                // 429 is us beeing to fast; 5xx is Jikan failing to reach MyAnimeList.
-                if (response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500)
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
+                    // The API is throttling us. Wait and retry, but don't count this as a failure for the series.
+                    blocked = true;
+
+                    var retryAfter = response.Headers.RetryAfter?.Delta
+                        ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
+
+                    await Task.Delay(
+                        retryAfter is { } wait && wait > TimeSpan.Zero
+                            ? (wait > MaxRetryAfter ? MaxRetryAfter : wait)
+                            : DefaultThrottleWait,
+                        cancellationToken).ConfigureAwait(false);
+
+                    continue;
+                }
+
+                if ((int)response.StatusCode >= 500)
+                {
+                    // The API is having a server-side problem. Wait and retry, but don't count this as a failure for the series.
                     _logger.LogDebug(
                         "Jikan returned {Status} for MAL {MalId} page {Page}, attempt {Attempt}",
                         (int)response.StatusCode, malId, page, attempt + 1);
-
-                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
-                    {
-                        var retryAfter = response.Headers.RetryAfter?.Delta
-                            ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
-
-                        if (retryAfter is { } wait && wait > TimeSpan.Zero)
-                        {
-                            await Task.Delay(
-                                wait > MaxRetryAfter ? MaxRetryAfter : wait,
-                                cancellationToken).ConfigureAwait(false);
-                        }
-                    }
-
                     continue;
                 }
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug("Jikan returned {Status} for MAL {MalId} page {Page}", (int)response.StatusCode, malId, page);
-                    return null;
+                    return (null, false);
                 }
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return JsonSerializer.Deserialize<JikanEpisodesResponse>(json, JsonOptions);
+                return (JsonSerializer.Deserialize<JikanEpisodesResponse>(json, JsonOptions), false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // No response at all: DNS, TLS, timeout, no route. That is the server's
+                // connection, not this entry, so treat it the same as being throttled.
+                blocked = true;
                 _logger.LogDebug(ex, "Jikan request failed for MAL {MalId} page {Page}, attempt {Attempt}", malId, page, attempt + 1);
             }
         }
 
-        _logger.LogDebug("Jikan gave up on MAL {MalId} page {Page} after {Attempts} attempts", malId, page, MaxAttemptsPerPage);
-        return null;
+        _logger.LogDebug(
+            "Jikan gave up on MAL {MalId} page {Page} after {Attempts} attempts, last status {Status}",
+            malId, page, MaxAttemptsPerPage, lastStatus);
+
+        return (null, blocked);
     }
 
     /// <summary>
@@ -200,6 +218,20 @@ public class AnimeFillerFetchService
         {
             RequestGate.Release();
         }
+    }
+
+    public enum FillerFetchStatus
+    {
+        Success,
+        Unavailable,
+        Blocked
+    }
+
+    public readonly record struct FillerFetchResult(FillerFetchStatus Status, AnimeFillerCacheEntry? Entry)
+    {
+        public static FillerFetchResult Ok(AnimeFillerCacheEntry entry) => new(FillerFetchStatus.Success, entry);
+        public static FillerFetchResult Unavailable() => new(FillerFetchStatus.Unavailable, null);
+        public static FillerFetchResult Blocked() => new(FillerFetchStatus.Blocked, null);
     }
 
     private class JikanEpisodesResponse

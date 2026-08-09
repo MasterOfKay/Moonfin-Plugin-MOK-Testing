@@ -22,6 +22,11 @@ public class AnimeFillerSyncTask : IScheduledTask
 
     private const int MaxConsecutiveFailures = 15;
 
+    /// <summary>
+    /// How many entries may be tried with nothing succeeding before the run is abandoned.
+    /// </summary>
+    private const int NoProgressLimit = 40;
+
     private readonly AnimeIdMappingService _mappingService;
     private readonly AnimeFillerResolver _resolver;
     private readonly AnimeFillerCacheService _cacheService;
@@ -105,6 +110,7 @@ public class AnimeFillerSyncTask : IScheduledTask
         var processed = 0;
         var fetched = 0;
         var failed = 0;
+        var unavailable = 0;
         var sinceFlush = 0;
 
         var consecutiveFailures = 0;
@@ -118,17 +124,26 @@ public class AnimeFillerSyncTask : IScheduledTask
 
                 try
                 {
-                    var entry = await _fetchService.FetchAsync(malId, cancellationToken).ConfigureAwait(false);
-                    if (entry != null)
+                    var result = await _fetchService.FetchAsync(malId, cancellationToken).ConfigureAwait(false);
+
+                    switch (result.Status)
                     {
-                        _cacheService.Set(malId, entry);
-                        fetched++;
-                        consecutiveFailures = 0;
-                    }
-                    else
-                    {
-                        failed++;
-                        consecutiveFailures++;
+                        case AnimeFillerFetchService.FillerFetchStatus.Success when result.Entry != null:
+                            _cacheService.Set(malId, result.Entry);
+                            fetched++;
+                            consecutiveFailures = 0;
+                            break;
+
+                        // MyAnimeList cannot serve this entry today. That says nothing about
+                        // the next one, so keep going and let tomorrow's run retry it.
+                        case AnimeFillerFetchService.FillerFetchStatus.Unavailable:
+                            unavailable++;
+                            break;
+
+                        default:
+                            failed++;
+                            consecutiveFailures++;
+                            break;
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -150,17 +165,29 @@ public class AnimeFillerSyncTask : IScheduledTask
                     sinceFlush = 0;
 
                     _logger.LogInformation(
-                        "Anime filler sync progress: {Processed}/{Total} processed, {Fetched} cached, {Failed} failed",
-                        processed, pending.Count, fetched, failed);
+                        "Anime filler sync progress: {Processed}/{Total} processed, {Fetched} cached, {Unavailable} unavailable on MyAnimeList, {Failed} failed",
+                        processed, pending.Count, fetched, unavailable, failed);
                 }
                 
+                if (fetched == 0 && processed >= NoProgressLimit)
+                {
+                    abortedEarly = true;
+                    _logger.LogWarning(
+                        "Anime filler sync stopped early: {Processed} entries tried and none succeeded " +
+                        "({Unavailable} not served by MyAnimeList, {Failed} connection failures). " +
+                        "Nothing is reachable right now, so the run was abandoned",
+                        processed, unavailable, failed);
+                    break;
+                }
+
+                // If we are throttled or cannot reach the API, further lookups will likely fail the same way. 
+                // Stop early to avoid making the client wait longer.
                 if (consecutiveFailures >= MaxConsecutiveFailures)
                 {
                     abortedEarly = true;
                     _logger.LogWarning(
-                        "Anime filler sync stopped early: {Count} MyAnimeList lookups failed in a row. " +
-                        "The API is likely rate limiting or unavailable. {Fetched} entries were cached; " +
-                        "the rest will be retried on the next run",
+                        "Anime filler sync stopped early: {Count} lookups failed in a row from being throttled or " +
+                        "unable to reach the API. {Fetched} entries were cached; the rest will be retried on the next run",
                         consecutiveFailures, fetched);
                     break;
                 }
@@ -171,9 +198,10 @@ public class AnimeFillerSyncTask : IScheduledTask
             await _cacheService.FlushAsync().ConfigureAwait(false);
 
             _logger.LogInformation(
-                "Anime filler sync finished{Aborted}: {Fetched} entries cached, {Failed} could not be read, {Flagged} flagged episodes stored",
+                "Anime filler sync finished{Aborted}: {Fetched} entries cached, {Unavailable} not served by MyAnimeList, " +
+                "{Failed} failed on the connection, {Flagged} flagged episodes stored",
                 abortedEarly ? " early" : string.Empty,
-                fetched, failed, _cacheService.TotalFlaggedEpisodes());
+                fetched, unavailable, failed, _cacheService.TotalFlaggedEpisodes());
         }
 
         progress.Report(100);
