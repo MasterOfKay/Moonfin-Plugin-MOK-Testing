@@ -617,6 +617,54 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h3 class="sectionTitle">Anime Filler Markers</h3>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeFillerEnabled" is="emby-checkbox" />
+                                <span>Mark filler and recap episodes</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Nightly task that looks up which anime episodes are filler or recap and lets Moonfin
+                                clients badge them. Data comes from MyAnimeList through the keyless
+                                <a href="https://jikan.moe/" target="_blank">Jikan API</a>, so
+                                <strong>no account and no API key are needed</strong>.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Libraries to scan</label>
+                            <div id="AnimeFillerLibraryPicker" style="max-height:200px;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:4px;"></div>
+                            <div class="fieldDescription">
+                                Pick your anime libraries, then click Save below. Selecting them explicitly is both
+                                faster and more accurate, because every series in them is treated as anime. If you
+                                select nothing, all libraries are scanned but only series that look like anime (an
+                                AniList, AniDB, AniSearch or Kitsu id, or an "Anime" genre or tag) are looked up.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AnimeFillerMaxAgeDays">Filler refresh age (days)</label>
+                            <input type="number" id="AnimeFillerMaxAgeDays" is="emby-input" min="1" max="365" step="1" />
+                            <div class="fieldDescription">
+                                Cached lookups older than this are re-fetched (default 30). Filler flags rarely change.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Matching check</label>
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <button type="button" id="AnimeFillerDiagBtn" is="emby-button" class="raised">Check matching</button>
+                                <button type="button" id="AnimeFillerClearBtn" is="emby-button" class="raised">Clear filler cache</button>
+                            </div>
+                            <div id="AnimeFillerDiagStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
+                            <div class="fieldDescription">
+                                Filler data is keyed on MyAnimeList ids, which Jellyfin libraries almost never store
+                                directly. Moonbase converts whatever id your series do have using the
+                                <a href="https://github.com/Fribb/anime-lists" target="_blank">Fribb anime-lists</a>
+                                mapping, so an AniList, AniDB, AniSearch, Kitsu or even a plain TVDB id is enough.
+                                Use this button to see how many of your series matched, and which ones did not.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h3 class="sectionTitle">TMDB Integration</h3>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">Server-wide TMDB API Key</label>
@@ -3563,6 +3611,27 @@
                     });
                 }
 
+                var animeFillerDiagButton = document.querySelector('#AnimeFillerDiagBtn');
+                if (animeFillerDiagButton && !animeFillerDiagButton.dataset.bound) {
+                    animeFillerDiagButton.dataset.bound = 'true';
+                    animeFillerDiagButton.addEventListener('click', function() {
+                        animeFillerDiagButton.disabled = true;
+                        loadAnimeFillerDiagnostics();
+                        // Re-enable after a short delay to avoid double-clicks.
+                        setTimeout(function() { animeFillerDiagButton.disabled = false; }, 2000);
+                    });
+                }
+
+                var animeFillerClearButton = document.querySelector('#AnimeFillerClearBtn');
+                if (animeFillerClearButton && !animeFillerClearButton.dataset.bound) {
+                    animeFillerClearButton.dataset.bound = 'true';
+                    animeFillerClearButton.addEventListener('click', function() {
+                        animeFillerClearButton.disabled = true;
+                        clearAnimeFillerCache();
+                        setTimeout(function() { animeFillerClearButton.disabled = false; }, 2000);
+                    });
+                }
+
                 if (themesListContainer && !themesListContainer.dataset.bound) {
                     themesListContainer.dataset.bound = 'true';
                     themesListContainer.addEventListener('click', function(event) {
@@ -3602,6 +3671,10 @@
                     document.querySelector('#WebDefaultServerUrl').value = config.WebDefaultServerUrl || '';
                     document.querySelector('#WebForcedServerUrl').value = config.WebForcedServerUrl || '';
                     document.querySelector('#WebEnableWebRtcScan').checked = config.WebEnableWebRtcScan !== false;
+
+                    document.querySelector('#AnimeFillerEnabled').checked = config.AnimeFillerEnabled === true;
+                    document.querySelector('#AnimeFillerMaxAgeDays').value = config.AnimeFillerMaxAgeDays || 30;
+                    loadLibraryPicker('#AnimeFillerLibraryPicker', 'animeFillerLibraryCb', config.AnimeFillerLibraryIds || []);
 
                     document.querySelector('#GamesEnabled').checked = config.GamesEnabled === true;
                     loadGameLibraryPicker(config.GameLibraryIds || []);
@@ -3868,8 +3941,8 @@
                     refreshCoresStatus();
                 }
 
-                function loadGameLibraryPicker(selectedIds) {
-                    var picker = document.querySelector('#GameLibraryPicker');
+                function loadLibraryPicker(pickerSelector, checkboxClass, selectedIds) {
+                    var picker = document.querySelector(pickerSelector);
                     if (!picker) return;
                     picker.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:0.9em;">Loading...</div>';
 
@@ -3885,12 +3958,87 @@
                             var item = items[i];
                             var isChecked = selectedIds.indexOf(item.Id) !== -1;
                             html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;' + (isChecked ? 'background:rgba(0,164,220,0.1);' : '') + '">' +
-                                '<input type="checkbox" class="gameLibraryCb" data-id="' + item.Id + '"' + (isChecked ? ' checked' : '') + ' style="accent-color:#00a4dc;width:16px;height:16px;">' +
+                                '<input type="checkbox" class="' + checkboxClass + '" data-id="' + item.Id + '"' + (isChecked ? ' checked' : '') + ' style="accent-color:#00a4dc;width:16px;height:16px;">' +
                                 '<div style="flex:1;min-width:0;"><div style="font-size:0.9em;color:rgba(255,255,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(item.Name || 'Untitled') + '</div>' +
                                 '<div style="font-size:0.75em;color:rgba(255,255,255,0.4);">' + esc(item.CollectionType || 'mixed') + '</div>' +
                                 '</div></label>';
                         }
                         picker.innerHTML = html;
+                    });
+                }
+
+                function loadGameLibraryPicker(selectedIds) {
+                    loadLibraryPicker('#GameLibraryPicker', 'gameLibraryCb', selectedIds);
+                }
+
+                function loadAnimeFillerDiagnostics() {
+                    var status = document.querySelector('#AnimeFillerDiagStatus');
+                    if (!status) return;
+
+                    status.textContent = 'Checking every anime series against the mapping, this can take a moment...';
+
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('Moonfin/AnimeFiller/Diagnostics'),
+                        dataType: 'json'
+                    }).then(function(info) {
+                        if (!info.mappingLoaded) {
+                            status.innerHTML = '<span style="color:#ff8a80;">' + esc(info.error || 'The anime id mapping is not loaded.') + '</span>';
+                            return;
+                        }
+
+                        var lines = [];
+                        lines.push('<strong>' + info.seriesResolved + ' of ' + info.seriesConsidered +
+                            '</strong> series matched a MyAnimeList entry (' + info.malEntriesCached + ' of ' +
+                            info.malEntries + ' entries cached, ' + info.flaggedEpisodes + ' flagged episodes stored).');
+
+                        var sources = info.matchSources || {};
+                        var sourceKeys = Object.keys(sources);
+                        if (sourceKeys.length > 0) {
+                            var parts = sourceKeys.map(function(k) { return esc(k) + ': ' + sources[k]; });
+                            lines.push('Matched via ' + parts.join(', ') + '.');
+                        }
+
+                        if (info.partialEntries > 0) {
+                            lines.push('<span style="opacity:0.75;">' + info.partialEntries +
+                                ' entries are incomplete because MyAnimeList would not serve every episode page. ' +
+                                'Markers on those shows stop partway and are retried daily.</span>');
+                        }
+
+                        if (info.unresolvedCount > 0) {
+                            lines.push('<span style="color:#ffcc80;">' + info.unresolvedCount +
+                                ' series could not be matched.</span> Add an anime metadata provider, or fix their ids: ' +
+                                (info.unresolvedSeries || []).map(esc).join(', ') +
+                                (info.unresolvedCount > (info.unresolvedSeries || []).length ? ', ...' : ''));
+                        } else {
+                            lines.push('<span style="color:#a5d6a7;">Every series matched.</span>');
+                        }
+
+                        if (info.mappingDownloadedAt) {
+                            lines.push('<span style="opacity:0.6;">Mapping table: ' + info.mappingEntries +
+                                ' entries, downloaded ' + new Date(info.mappingDownloadedAt).toLocaleString() + '.</span>');
+                        }
+
+                        status.innerHTML = lines.join('<br>');
+                    }, function() {
+                        status.innerHTML = '<span style="color:#ff8a80;">Could not read the filler diagnostics. Is the plugin up to date?</span>';
+                    });
+                }
+
+                function clearAnimeFillerCache() {
+                    var status = document.querySelector('#AnimeFillerDiagStatus');
+                    if (!status) return;
+
+                    status.textContent = 'Clearing...';
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Moonfin/AnimeFiller/ClearCache'),
+                        dataType: 'json'
+                    }).then(function(result) {
+                        status.textContent = 'Cleared ' + (result && result.cleared ? result.cleared : 0) +
+                            ' cached entries. Run "Moonfin Anime Filler Sync" in Scheduled Tasks to refetch.';
+                    }, function() {
+                        status.innerHTML = '<span style="color:#ff8a80;">Clearing the filler cache failed.</span>';
                     });
                 }
 
@@ -3970,6 +4118,12 @@
                         config.WebDefaultServerUrl = document.querySelector('#WebDefaultServerUrl').value || null;
                         config.WebForcedServerUrl = document.querySelector('#WebForcedServerUrl').value || null;
                         config.WebEnableWebRtcScan = document.querySelector('#WebEnableWebRtcScan').checked;
+
+                        config.AnimeFillerEnabled = document.querySelector('#AnimeFillerEnabled').checked;
+                        config.AnimeFillerMaxAgeDays = parseInt(document.querySelector('#AnimeFillerMaxAgeDays').value, 10) || 30;
+                        config.AnimeFillerLibraryIds = Array.prototype.slice.call(
+                            document.querySelectorAll('.animeFillerLibraryCb:checked')
+                        ).map(function (cb) { return cb.getAttribute('data-id'); });
 
                         config.GamesEnabled = document.querySelector('#GamesEnabled').checked;
                         config.GameLibraryIds = Array.prototype.slice.call(

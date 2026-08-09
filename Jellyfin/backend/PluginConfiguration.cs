@@ -90,6 +90,30 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public int StudioLogosMaxAgeDays { get; set; } = 30;
 
+    // ---------------------------------------------------------------------
+    // Anime filler / recap markers
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Scans anime series for filler and recap episodes so Moonfin clients can badge them.
+    /// Data comes from MyAnimeList via the Jikan API. No account or key is needed.
+    /// </summary>
+    public bool AnimeFillerEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Jellyfin library IDs (GUID strings) to scan for filler episodes. When empty, every
+    /// TV library is scanned but only series that look like anime (an AniList/AniDB/AniSearch/
+    /// Kitsu provider id, or an "Anime" genre or tag) are looked up. 
+    /// Selecting libraries will treat them all as anime. 
+    /// </summary>
+    public List<string> AnimeFillerLibraryIds { get; set; } = new();
+
+    /// <summary>
+    /// How long a cached filler lookup stays fresh before the sync task refetches it.
+    /// Filler flags almost never change for finished shows, so this is more for caching purposes.
+    /// </summary>
+    public int AnimeFillerMaxAgeDays { get; set; } = 30;
+
     /// <summary>
     /// Optional default server URL shown in the Moonfin web Add Server dialog.
     /// </summary>
