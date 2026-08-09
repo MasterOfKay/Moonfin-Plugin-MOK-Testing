@@ -3988,6 +3988,17 @@
                         }
 
                         var lines = [];
+
+                        if (!info.libraryFilterActive) {
+                            lines.push('<span style="color:#ffcc80;">No libraries selected.</span> Every library is scanned and only series that look like anime are kept, which is slower and can pull in shows from other libraries. Pick your anime libraries above and click Save.');
+                        } else if (info.resolvedLibraryCount < info.configuredLibraryCount) {
+                            lines.push('<span style="color:#ff8a80;">Only ' + info.resolvedLibraryCount + ' of ' +
+                                info.configuredLibraryCount + ' selected libraries could be resolved.</span>');
+                        } else {
+                            lines.push('Scanning ' + info.resolvedLibraryCount + ' selected librar' +
+                                (info.resolvedLibraryCount === 1 ? 'y' : 'ies') + '.');
+                        }
+
                         lines.push('<strong>' + info.seriesResolved + ' of ' + info.seriesConsidered +
                             '</strong> series matched a MyAnimeList entry (' + info.malEntriesCached + ' of ' +
                             info.malEntries + ' entries cached, ' + info.flaggedEpisodes + ' flagged episodes stored).');

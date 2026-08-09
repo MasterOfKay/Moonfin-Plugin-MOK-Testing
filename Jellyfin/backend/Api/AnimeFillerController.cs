@@ -154,10 +154,19 @@ public class AnimeFillerController : ControllerBase
         var plan = _resolver.BuildScanPlan();
         var fresh = _cacheService.GetFreshMalIds(TimeSpan.FromDays(config?.AnimeFillerMaxAgeDays ?? 30));
 
+        // Library selection is the most common thing to get wrong, and when it
+        // silently fails the scan looks like it is ignoring the picker. Report
+        // what was configured and what it actually resolved to.
+        var configuredLibraries = config?.AnimeFillerLibraryIds ?? new List<string>();
+        var resolvedLibraries = _resolver.GetSelectedLibraryFolderIds();
+
         return Ok(new
         {
             enabled = config?.AnimeFillerEnabled ?? false,
             mappingLoaded = true,
+            libraryFilterActive = resolvedLibraries != null,
+            configuredLibraryCount = configuredLibraries.Count,
+            resolvedLibraryCount = resolvedLibraries?.Count ?? 0,
             mappingEntries = _mappingService.MappingCount,
             mappingDownloadedAt = _mappingService.MappingDownloadedAt,
             seriesConsidered = plan.SeriesConsidered,

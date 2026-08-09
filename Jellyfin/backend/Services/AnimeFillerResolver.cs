@@ -38,43 +38,69 @@ public class AnimeFillerResolver
     /// </summary>
     public List<Series> GetCandidateSeries()
     {
-        var allowedLibraries = GetAllowedLibraryIds();
-        var candidates = new List<Series>();
+        var libraryIds = GetSelectedLibraryFolderIds();
 
-        foreach (var series in QueryAllSeries())
+        // Nothing selected: look at every series, keep the ones that look like anime.
+        if (libraryIds == null)
         {
-            if (allowedLibraries != null)
+            return QuerySeries(null).Where(IsLikelyAnime).ToList();
+        }
+
+        // Libraries were selected but none of them resolved. Scanning the whole
+        // server instead would be the opposite of what was asked for, so scan
+        // nothing and say so. The admin page reports this too.
+        if (libraryIds.Count == 0)
+        {
+            _logger.LogWarning(
+                "Anime filler: libraries are selected but none could be resolved, so nothing was scanned");
+            return new List<Series>();
+        }
+
+        // Ask per library so the database does the filtering. Loading every series
+        // and discarding most of them is far too slow on a large server.
+        var candidates = new List<Series>();
+        var seen = new HashSet<Guid>();
+
+        foreach (var libraryId in libraryIds)
+        {
+            foreach (var series in QuerySeries(libraryId))
             {
-                if (!IsInAllowedLibrary(series, allowedLibraries))
+                if (seen.Add(series.Id))
                 {
-                    continue;
+                    candidates.Add(series);
                 }
             }
-            else if (!IsLikelyAnime(series))
-            {
-                continue;
-            }
-
-            candidates.Add(series);
         }
 
         return candidates;
     }
 
-    private IEnumerable<Series> QueryAllSeries()
+    private IEnumerable<Series> QuerySeries(Guid? parentId)
     {
-        return _libraryManager.GetItemsResult(new InternalItemsQuery
+        var query = new InternalItemsQuery
         {
             IncludeItemTypes = [BaseItemKind.Series],
             IsVirtualItem = false,
             Recursive = true
-        }).Items.OfType<Series>();
+        };
+
+        if (parentId != null)
+        {
+            query.ParentId = parentId.Value;
+        }
+
+        return _libraryManager.GetItemsResult(query).Items.OfType<Series>();
     }
 
     /// <summary>
-    /// Gets the library ids the admin has selected for filler lookup. If none are selected, all libraries are allowed.
+    /// Turns the selected library ids into ids that can be used as a query parent.
+    /// Returns null when nothing is selected, which means "scan everything".
+    ///
+    /// The picker stores the id the web client sees, which is a user view. A view
+    /// is not an ancestor of anything, so querying under it finds no series. The
+    /// real container is the collection folder the view points at.
     /// </summary>
-    private HashSet<Guid>? GetAllowedLibraryIds()
+    public HashSet<Guid>? GetSelectedLibraryFolderIds()
     {
         var configuredIds = MoonfinPlugin.Instance?.Configuration?.AnimeFillerLibraryIds ?? new List<string>();
         if (configuredIds.Count == 0)
@@ -82,7 +108,7 @@ public class AnimeFillerResolver
             return null;
         }
 
-        var allowed = new HashSet<Guid>();
+        var resolved = new HashSet<Guid>();
 
         foreach (var rawId in configuredIds)
         {
@@ -91,48 +117,28 @@ public class AnimeFillerResolver
                 continue;
             }
 
-            allowed.Add(libraryId);
-
             var item = _libraryManager.GetItemById(libraryId);
             if (item == null)
             {
+                // Unknown to the library manager, but the id may still work as a
+                // parent. Worst case the query returns nothing.
+                resolved.Add(libraryId);
                 continue;
             }
 
-            // Collection folders are the only library items that can contain series, so if the admin has selected a collection folder, also allow any series filed under it.
-            if (!item.DisplayParentId.Equals(default))
+            // Only follow the display parent for a view. Doing it for a collection
+            // folder would walk up to the media root and pull in the whole server.
+            if (item is UserView view && !view.DisplayParentId.Equals(default))
             {
-                allowed.Add(item.DisplayParentId);
+                resolved.Add(view.DisplayParentId);
             }
-
-            // If a virtual folder has ethe same name as a ibary we allow it too, for convenience.
-            if (!string.IsNullOrEmpty(item.Name))
+            else
             {
-                foreach (var folder in _libraryManager.GetVirtualFolders())
-                {
-                    if (string.Equals(folder.Name, item.Name, StringComparison.OrdinalIgnoreCase) &&
-                        Guid.TryParse(folder.ItemId, out var folderId))
-                    {
-                        allowed.Add(folderId);
-                    }
-                }
+                resolved.Add(item.Id);
             }
         }
 
-        return allowed.Count > 0 ? allowed : null;
-    }
-
-    private bool IsInAllowedLibrary(BaseItem series, HashSet<Guid> allowedLibraries)
-    {
-        foreach (var folder in _libraryManager.GetCollectionFolders(series))
-        {
-            if (allowedLibraries.Contains(folder.Id))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return resolved;
     }
 
     /// <summary>
