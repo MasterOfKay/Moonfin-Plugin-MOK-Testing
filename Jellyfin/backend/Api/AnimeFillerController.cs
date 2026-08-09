@@ -96,15 +96,23 @@ public class AnimeFillerController : ControllerBase
         });
     }
 
+    private const int MaxOnDemandFetches = 2;
+
     private async Task FetchMissingAsync(Series series, CancellationToken cancellationToken)
     {
         var fetchedAny = false;
+        var fetches = 0;
 
         foreach (var mapping in _resolver.ResolveSeasons(series))
         {
             if (mapping.Lookup == null || _cacheService.TryGet(mapping.Lookup.MalId, CacheMaxAge) != null)
             {
                 continue;
+            }
+
+            if (fetches++ >= MaxOnDemandFetches)
+            {
+                break;
             }
 
             try

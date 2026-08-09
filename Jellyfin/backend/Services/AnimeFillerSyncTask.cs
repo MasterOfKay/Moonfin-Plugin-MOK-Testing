@@ -20,6 +20,8 @@ public class AnimeFillerSyncTask : IScheduledTask
 
     private const int FlushEveryNSeries = 25;
 
+    private const int MaxConsecutiveFailures = 15;
+
     private readonly AnimeIdMappingService _mappingService;
     private readonly AnimeFillerResolver _resolver;
     private readonly AnimeFillerCacheService _cacheService;
@@ -105,47 +107,74 @@ public class AnimeFillerSyncTask : IScheduledTask
         var failed = 0;
         var sinceFlush = 0;
 
-        foreach (var malId in pending)
+        var consecutiveFailures = 0;
+        var abortedEarly = false;
+
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
+            foreach (var malId in pending)
             {
-                var entry = await _fetchService.FetchAsync(malId, cancellationToken).ConfigureAwait(false);
-                if (entry != null)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
                 {
-                    _cacheService.Set(malId, entry);
-                    fetched++;
+                    var entry = await _fetchService.FetchAsync(malId, cancellationToken).ConfigureAwait(false);
+                    if (entry != null)
+                    {
+                        _cacheService.Set(malId, entry);
+                        fetched++;
+                        consecutiveFailures = 0;
+                    }
+                    else
+                    {
+                        failed++;
+                        consecutiveFailures++;
+                    }
                 }
-                else
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    _logger.LogWarning(ex, "Anime filler fetch failed for MAL {MalId}, continuing", malId);
                     failed++;
+                    consecutiveFailures++;
                 }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex, "Anime filler fetch failed for MAL {MalId}, continuing", malId);
-                failed++;
-            }
 
-            processed++;
-            sinceFlush++;
+                processed++;
+                sinceFlush++;
 
-            // 10% went to mapping, so the fetch loop owns the remaining 90%.
-            progress.Report(10 + ((double)processed / pending.Count * 90));
+                // 10% went to mapping, so the fetch loop owns the remaining 90%.
+                progress.Report(10 + ((double)processed / pending.Count * 90));
 
-            if (sinceFlush >= FlushEveryNSeries)
-            {
-                await _cacheService.FlushAsync().ConfigureAwait(false);
-                sinceFlush = 0;
+                if (sinceFlush >= FlushEveryNSeries)
+                {
+                    await _cacheService.FlushAsync().ConfigureAwait(false);
+                    sinceFlush = 0;
+
+                    _logger.LogInformation(
+                        "Anime filler sync progress: {Processed}/{Total} processed, {Fetched} cached, {Failed} failed",
+                        processed, pending.Count, fetched, failed);
+                }
+                
+                if (consecutiveFailures >= MaxConsecutiveFailures)
+                {
+                    abortedEarly = true;
+                    _logger.LogWarning(
+                        "Anime filler sync stopped early: {Count} MyAnimeList lookups failed in a row. " +
+                        "The API is likely rate limiting or unavailable. {Fetched} entries were cached; " +
+                        "the rest will be retried on the next run",
+                        consecutiveFailures, fetched);
+                    break;
+                }
             }
         }
+        finally
+        {
+            await _cacheService.FlushAsync().ConfigureAwait(false);
 
-        await _cacheService.FlushAsync().ConfigureAwait(false);
-
-        _logger.LogInformation(
-            "Anime filler sync complete: {Fetched} entries cached, {Failed} could not be read, {Flagged} flagged episodes stored",
-            fetched, failed, _cacheService.TotalFlaggedEpisodes());
+            _logger.LogInformation(
+                "Anime filler sync finished{Aborted}: {Fetched} entries cached, {Failed} could not be read, {Flagged} flagged episodes stored",
+                abortedEarly ? " early" : string.Empty,
+                fetched, failed, _cacheService.TotalFlaggedEpisodes());
+        }
 
         progress.Report(100);
     }

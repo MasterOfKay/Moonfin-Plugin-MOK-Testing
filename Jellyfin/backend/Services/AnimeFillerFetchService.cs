@@ -14,9 +14,9 @@ public class AnimeFillerFetchService
     private const string ApiBase = "https://api.jikan.moe/v4";
 
     /// <summary>
-    /// Jikan allows roughly 3/sec and 60/min. One per second stays well inside both.
+    /// Jikan allows roughly 3/sec and 60/min.
     /// </summary>
-    private static readonly TimeSpan MinRequestSpacing = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MinRequestSpacing = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// Guards against a malformed pagination response spinning forever. 100 eps/page.
@@ -106,7 +106,8 @@ public class AnimeFillerFetchService
     /// <summary>
     /// The Jikan API is not reliable, so we retry a few times before giving up on a series.
     /// </summary>
-    private const int MaxAttemptsPerPage = 4;
+    private const int MaxAttemptsPerPage = 3;
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(30);
 
     private async Task<JikanEpisodesResponse?> GetEpisodePageAsync(int malId, int page, CancellationToken cancellationToken)
     {
@@ -143,6 +144,20 @@ public class AnimeFillerFetchService
                     _logger.LogDebug(
                         "Jikan returned {Status} for MAL {MalId} page {Page}, attempt {Attempt}",
                         (int)response.StatusCode, malId, page, attempt + 1);
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta
+                            ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
+
+                        if (retryAfter is { } wait && wait > TimeSpan.Zero)
+                        {
+                            await Task.Delay(
+                                wait > MaxRetryAfter ? MaxRetryAfter : wait,
+                                cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+
                     continue;
                 }
 
