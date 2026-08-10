@@ -19,6 +19,16 @@ public class AnimeFillerCacheService : FileBackedCacheService<AnimeFillerCacheEn
 
     public static string KeyFor(int malId) => $"mal:{malId}";
 
+    /// <summary>
+    /// A key for a MAL id that was recently unavailable, so the next scan can skip it.
+    /// </summary>
+    private static string MissKeyFor(int malId) => $"miss:{malId}";
+
+    /// <summary>
+    /// How long to wait before retrying a MAL id that was recently unavailable.
+    /// </summary>
+    public static readonly TimeSpan UnavailableRetryWindow = TimeSpan.FromDays(3);
+
     public AnimeFillerCacheEntry? TryGet(int malId, TimeSpan maxAge)
     {
         var cache = EnsureLoaded();
@@ -36,6 +46,40 @@ public class AnimeFillerCacheService : FileBackedCacheService<AnimeFillerCacheEn
         var cache = EnsureLoaded();
         entry.CachedAt = DateTimeOffset.UtcNow;
         cache[KeyFor(malId)] = entry;
+
+        // If we had previously marked this MAL id as unavailable, clear that so the next scan will try it again.
+        cache.TryRemove(MissKeyFor(malId), out _);
+    }
+
+    /// <summary>
+    /// Mark a MAL id as unavailable, so the next scan will skip it for a while.
+    /// </summary>
+    public void MarkUnavailable(int malId)
+    {
+        var cache = EnsureLoaded();
+        cache[MissKeyFor(malId)] = new AnimeFillerCacheEntry { CachedAt = DateTimeOffset.UtcNow };
+    }
+
+    /// <summary>
+    /// MAL ids whose cached entry is still fresh and so can be skipped by the next scan.
+    /// </summary>
+    public HashSet<int> GetRecentlyUnavailableMalIds()
+    {
+        var cache = EnsureLoaded();
+        var now = DateTimeOffset.UtcNow;
+        var ids = new HashSet<int>();
+
+        foreach (var (key, entry) in cache)
+        {
+            if (key.StartsWith("miss:", StringComparison.OrdinalIgnoreCase) &&
+                now - entry.CachedAt < UnavailableRetryWindow &&
+                int.TryParse(key.AsSpan(5), out var malId))
+            {
+                ids.Add(malId);
+            }
+        }
+
+        return ids;
     }
 
     /// <summary>
@@ -87,13 +131,20 @@ public class AnimeFillerCacheService : FileBackedCacheService<AnimeFillerCacheEn
         return total;
     }
 
-    public int EntryCount() => EnsureLoaded().Count;
+    private static bool IsSeriesKey(string key) => key.StartsWith("mal:", StringComparison.OrdinalIgnoreCase);
+
+    public int EntryCount() => EnsureLoaded().Keys.Count(IsSeriesKey);
 
     /// <summary>
-    /// Partial entries are those that failed to fetch all episode pages. 
-    /// They expire on faster than full entries, so a series that is partially cached will be goone sooner.
+    /// Count of entries that are partially cached.
     /// </summary>
-    public int PartialEntryCount() => EnsureLoaded().Values.Count(entry => entry.Partial);
+    public int PartialEntryCount() =>
+        EnsureLoaded().Count(pair => IsSeriesKey(pair.Key) && pair.Value.Partial);
+
+    /// <summary>
+    /// How many entries are currently being skipped because MyAnimeList could not serve them.
+    /// </summary>
+    public int UnavailableEntryCount() => GetRecentlyUnavailableMalIds().Count;
 }
 
 /// <summary>

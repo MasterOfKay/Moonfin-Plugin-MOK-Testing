@@ -78,7 +78,13 @@ public class AnimeFillerFetchService
     /// <summary>
     /// Fetches the filler and recap episode information for a given MyAnimeList ID.
     /// </summary>
-    public async Task<FillerFetchResult> FetchAsync(int malId, CancellationToken cancellationToken)
+    /// <param name="malId">The MyAnimeList id of the series to look up.</param>
+    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <param name="fastFail">
+    /// If true, the fetch will give up on a series after a single failed page. 
+    /// If false, it will retry a few times before giving up.
+    /// </param>
+    public async Task<FillerFetchResult> FetchAsync(int malId, CancellationToken cancellationToken, bool fastFail = false)
     {
         var flagged = new List<AnimeFillerEpisode>();
         var episodeCount = 0;
@@ -88,7 +94,7 @@ public class AnimeFillerFetchService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (response, blocked) = await GetEpisodePageAsync(malId, page, cancellationToken).ConfigureAwait(false);
+            var (response, blocked) = await GetEpisodePageAsync(malId, page, fastFail, cancellationToken).ConfigureAwait(false);
             if (response == null)
             {
                 // The API refused to serve this entry, or we are being throttled. Either way, stop here.
@@ -160,7 +166,7 @@ public class AnimeFillerFetchService
     private static readonly TimeSpan DefaultThrottleWait = TimeSpan.FromSeconds(10);
 
     private async Task<(JikanEpisodesResponse? Page, bool Blocked)> GetEpisodePageAsync(
-        int malId, int page, CancellationToken cancellationToken)
+        int malId, int page, bool fastFail, CancellationToken cancellationToken)
     {
         var url = $"{ApiBase}/anime/{malId}/episodes?page={page}";
         var lastStatus = 0;
@@ -205,10 +211,16 @@ public class AnimeFillerFetchService
 
                 if ((int)response.StatusCode >= 500)
                 {
-                    // The API is having a server-side problem. Wait and retry, but don't count this as a failure for the series.
+                    // The API is having a server-side problem. Retry a few times, but don't count this as a failure for the series.
                     LogDetail(
                         "Jikan returned {Status} for MAL {MalId} page {Page}, attempt {Attempt}",
                         (int)response.StatusCode, malId, page, attempt + 1);
+
+                    if (fastFail)
+                    {
+                        return (null, false);
+                    }
+
                     continue;
                 }
 

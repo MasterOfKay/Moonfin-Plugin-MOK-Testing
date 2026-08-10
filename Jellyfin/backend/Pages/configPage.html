@@ -4029,6 +4029,13 @@
                                 'Markers on those shows stop partway and are retried daily.</span>');
                         }
 
+                        if (info.unavailableEntries > 0) {
+                            lines.push('<span style="color:#ffcc80;">' + info.unavailableEntries +
+                                ' entries are being skipped because MyAnimeList has no data for them.</span> ' +
+                                'That is a limit of the upstream service rather than of this server. ' +
+                                'They are tried again after a few days.');
+                        }
+
                         if (info.unresolvedCount > 0) {
                             lines.push('<span style="color:#ffcc80;">' + info.unresolvedCount +
                                 ' series could not be matched.</span> Add an anime metadata provider, or fix their ids: ' +

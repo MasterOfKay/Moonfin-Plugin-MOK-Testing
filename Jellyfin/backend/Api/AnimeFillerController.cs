@@ -100,12 +100,19 @@ public class AnimeFillerController : ControllerBase
 
     private async Task FetchMissingAsync(Series series, CancellationToken cancellationToken)
     {
-        var fetchedAny = false;
+        var cacheChanged = false;
         var fetches = 0;
+        var unservable = _cacheService.GetRecentlyUnavailableMalIds();
 
         foreach (var mapping in _resolver.ResolveSeasons(series))
         {
             if (mapping.Lookup == null || _cacheService.TryGet(mapping.Lookup.MalId, CacheMaxAge) != null)
+            {
+                continue;
+            }
+
+            // Can't be fetched, so we ignore.
+            if (unservable.Contains(mapping.Lookup.MalId))
             {
                 continue;
             }
@@ -121,7 +128,12 @@ public class AnimeFillerController : ControllerBase
                 if (result.Entry != null)
                 {
                     _cacheService.Set(mapping.Lookup.MalId, result.Entry);
-                    fetchedAny = true;
+                    cacheChanged = true;
+                }
+                else if (result.Status == AnimeFillerFetchService.FillerFetchStatus.Unavailable)
+                {
+                    _cacheService.MarkUnavailable(mapping.Lookup.MalId);
+                    cacheChanged = true;
                 }
                 else if (result.Status == AnimeFillerFetchService.FillerFetchStatus.Blocked)
                 {
@@ -135,7 +147,7 @@ public class AnimeFillerController : ControllerBase
             }
         }
 
-        if (fetchedAny)
+        if (cacheChanged)
         {
             await _cacheService.FlushAsync().ConfigureAwait(false);
         }
@@ -167,9 +179,8 @@ public class AnimeFillerController : ControllerBase
         var plan = _resolver.BuildScanPlan();
         var fresh = _cacheService.GetFreshMalIds(TimeSpan.FromDays(config?.AnimeFillerMaxAgeDays ?? 30));
 
-        // Library selection is the most common thing to get wrong, and when it
-        // silently fails the scan looks like it is ignoring the picker. Report
-        // what was configured and what it actually resolved to.
+        // Count how many libraries are configured for anime filler, and how many are actually resolved by the library resolver. 
+        // This is useful for debugging why some series are not being scanned.
         var configuredLibraries = config?.AnimeFillerLibraryIds ?? new List<string>();
         var resolvedLibraries = _resolver.GetSelectedLibraryFolderIds();
 
@@ -188,6 +199,7 @@ public class AnimeFillerController : ControllerBase
             malEntriesCached = plan.MalIds.Count(fresh.Contains),
             flaggedEpisodes = _cacheService.TotalFlaggedEpisodes(),
             partialEntries = _cacheService.PartialEntryCount(),
+            unavailableEntries = _cacheService.UnavailableEntryCount(),
             matchSources = plan.SourceCounts,
             unresolvedSeries = plan.UnresolvedSeries.Take(50).ToList(),
             unresolvedCount = plan.UnresolvedSeries.Count
