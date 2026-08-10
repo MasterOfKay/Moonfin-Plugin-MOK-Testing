@@ -40,6 +40,41 @@ public class AnimeFillerFetchService
         _logger = logger;
     }
 
+    private static bool Verbose =>
+        MoonfinPlugin.Instance?.Configuration?.AnimeFillerVerboseLogging == true;
+
+    /// <summary>
+    /// Anime Filler is super buggy and may have many problems. 
+    /// Debugging is needed. This is a easy way.
+    /// </summary>
+    private void LogDetail(string message, params object?[] args)
+    {
+        if (Verbose)
+        {
+#pragma warning disable CA2254
+            _logger.LogInformation(message, args);
+        }
+        else
+        {
+            _logger.LogDebug(message, args);
+        }
+#pragma warning restore CA2254
+    }
+
+    private void LogDetail(Exception ex, string message, params object?[] args)
+    {
+        if (Verbose)
+        {
+#pragma warning disable CA2254
+            _logger.LogInformation(ex, message, args);
+        }
+        else
+        {
+            _logger.LogDebug(ex, message, args);
+        }
+#pragma warning restore CA2254
+    }
+
     /// <summary>
     /// Fetches the filler and recap episode information for a given MyAnimeList ID.
     /// </summary>
@@ -69,7 +104,7 @@ public class AnimeFillerFetchService
                 }
 
                 // Failing on a later page leaves the earlier pages, so keep them as a partial result.
-                _logger.LogDebug("Jikan returned only {Count} episodes for MAL {MalId}, keeping them as partial", episodeCount, malId);
+                LogDetail("Jikan returned only {Count} episodes for MAL {MalId}, keeping them as partial", episodeCount, malId);
 
                 return FillerFetchResult.Ok(new AnimeFillerCacheEntry
                 {
@@ -101,6 +136,10 @@ public class AnimeFillerFetchService
 
             page++;
         }
+
+        LogDetail(
+            "Jikan returned MAL {MalId}: {Episodes} episodes, {Flagged} flagged",
+            malId, episodeCount, flagged.Count);
 
         return FillerFetchResult.Ok(new AnimeFillerCacheEntry
         {
@@ -143,7 +182,7 @@ public class AnimeFillerFetchService
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     // The mapping pointed at an id MAL does not serve. Not retryable.
-                    _logger.LogDebug("Jikan has no entry for MAL {MalId}", malId);
+                    LogDetail("Jikan has no entry for MAL {MalId}", malId);
                     return (null, false);
                 }
 
@@ -167,7 +206,7 @@ public class AnimeFillerFetchService
                 if ((int)response.StatusCode >= 500)
                 {
                     // The API is having a server-side problem. Wait and retry, but don't count this as a failure for the series.
-                    _logger.LogDebug(
+                    LogDetail(
                         "Jikan returned {Status} for MAL {MalId} page {Page}, attempt {Attempt}",
                         (int)response.StatusCode, malId, page, attempt + 1);
                     continue;
@@ -175,7 +214,7 @@ public class AnimeFillerFetchService
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug("Jikan returned {Status} for MAL {MalId} page {Page}", (int)response.StatusCode, malId, page);
+                    LogDetail("Jikan returned {Status} for MAL {MalId} page {Page}", (int)response.StatusCode, malId, page);
                     return (null, false);
                 }
 
@@ -187,11 +226,11 @@ public class AnimeFillerFetchService
                 // No response at all: DNS, TLS, timeout, no route. That is the server's
                 // connection, not this entry, so treat it the same as being throttled.
                 blocked = true;
-                _logger.LogDebug(ex, "Jikan request failed for MAL {MalId} page {Page}, attempt {Attempt}", malId, page, attempt + 1);
+                LogDetail(ex, "Jikan request failed for MAL {MalId} page {Page}, attempt {Attempt}", malId, page, attempt + 1);
             }
         }
 
-        _logger.LogDebug(
+        LogDetail(
             "Jikan gave up on MAL {MalId} page {Page} after {Attempts} attempts, last status {Status}",
             malId, page, MaxAttemptsPerPage, lastStatus);
 

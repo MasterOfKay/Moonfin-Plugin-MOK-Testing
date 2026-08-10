@@ -109,6 +109,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public List<string> AnimeFillerLibraryIds { get; set; } = new();
 
     /// <summary>
+    /// Debigging option. Only for problem solving.
+    /// </summary>
+    public bool AnimeFillerVerboseLogging { get; set; } = false;
+
+    /// <summary>
     /// How long a cached filler lookup stays fresh before the sync task refetches it.
     /// Filler flags almost never change for finished shows, so this is more for caching purposes.
     /// </summary>

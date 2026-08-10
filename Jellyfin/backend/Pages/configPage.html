@@ -647,6 +647,18 @@
                                 Cached lookups older than this are re-fetched (default 30). Filler flags rarely change.
                             </div>
                         </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeFillerVerboseLogging" is="emby-checkbox" />
+                                <span>Verbose filler logging</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Writes every MyAnimeList lookup, its status code and any retries into the normal
+                                Jellyfin log (Dashboard, Logs), so you can see what a scan is doing without editing
+                                <code>logging.json</code> on the server. This is noisy, a full scan adds thousands of
+                                lines, so turn it back off once you have what you need.
+                            </div>
+                        </div>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused">Matching check</label>
                             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -3674,6 +3686,7 @@
 
                     document.querySelector('#AnimeFillerEnabled').checked = config.AnimeFillerEnabled === true;
                     document.querySelector('#AnimeFillerMaxAgeDays').value = config.AnimeFillerMaxAgeDays || 30;
+                    document.querySelector('#AnimeFillerVerboseLogging').checked = config.AnimeFillerVerboseLogging === true;
                     loadLibraryPicker('#AnimeFillerLibraryPicker', 'animeFillerLibraryCb', config.AnimeFillerLibraryIds || []);
 
                     document.querySelector('#GamesEnabled').checked = config.GamesEnabled === true;
@@ -4132,6 +4145,7 @@
 
                         config.AnimeFillerEnabled = document.querySelector('#AnimeFillerEnabled').checked;
                         config.AnimeFillerMaxAgeDays = parseInt(document.querySelector('#AnimeFillerMaxAgeDays').value, 10) || 30;
+                        config.AnimeFillerVerboseLogging = document.querySelector('#AnimeFillerVerboseLogging').checked;
                         config.AnimeFillerLibraryIds = Array.prototype.slice.call(
                             document.querySelectorAll('.animeFillerLibraryCb:checked')
                         ).map(function (cb) { return cb.getAttribute('data-id'); });
