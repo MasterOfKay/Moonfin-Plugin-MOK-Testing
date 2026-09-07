@@ -94,7 +94,7 @@ On Emby, the web app is served the same way at `/Moonfin/Web/`, but there's no h
 - **The Moonfin web app** hosted at `/Moonfin/Web/`, running side by side with the stock web interface.
 - **Media bar and home screen data** resolved on the server and shared across clients.
 - **Extra rating sources** through MDBList and TMDB, with the API keys kept on the server.
-- **Seerr integration** with a built-in proxy, single sign-on, and optional request and issue notifications.
+- **Seerr integration** with a built-in proxy, single sign-on, and optional request and issue notifications. The step-by-step guide is [Seerr Setup](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Setup).
 - **Push notifications** that reach Moonfin apps even when they are closed, covering Seerr activity, new media added to your library, and admin broadcasts. See [Seerr Notifications](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Notifications).
 - **Admin tools** for setting server-wide defaults across every client setting, pushing them to existing users, and broadcasting a message to everyone at once.
 - **Server messages**: an admin can write a note (title, Markdown body, colour, audience, start and end dates, an optional link button) that shows up in people's apps, even if they were offline when it was sent.
@@ -135,6 +135,7 @@ The deeper reference material lives in the [Wiki](https://github.com/Moonfin-Cli
 | [Settings Sync](https://github.com/Moonfin-Client/Plugin/wiki/Settings-Sync) | How sync works, the settings envelope, and the full list of synced settings |
 | [Data Locations](https://github.com/Moonfin-Client/Plugin/wiki/Data-Locations) | Where the plugin stores user settings, themes, saves, and caches on the server |
 | [Retro Games](https://github.com/Moonfin-Client/Plugin/wiki/Retro-Games) | Game libraries, cores, ROMs, BIOS, saves, and in-browser play |
+| [Seerr Setup](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Setup) | The plain step-by-step guide to connecting Seerr |
 | [Seerr Notifications](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Notifications) | Push delivery, webhooks, notification types, and self-hosted relays |
 | [Themes](https://github.com/Moonfin-Client/Plugin/wiki/Themes) | The theme editor and custom theme uploads |
 | [Reverse Proxy and Seerr](https://github.com/Moonfin-Client/Plugin/wiki/Reverse-Proxy-and-Seerr) | Path forwarding and Seerr single sign-on behind a proxy |
