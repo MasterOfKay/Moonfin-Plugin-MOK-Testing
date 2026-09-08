@@ -40,11 +40,25 @@ public class NewMediaNotifier : IHostedService, IDisposable
         Type.GetType("MediaBrowser.Controller.Library.IUserManager, MediaBrowser.Controller");
     private static readonly MethodInfo? _userManagerGetUserById =
         _userManagerType?.GetMethod("GetUserById", [typeof(Guid)]);
+    // IsVisible grew a skipAllowedTagsCheck parameter in Jellyfin 10.11, so the lookup
+    // takes any overload whose extra parameters are booleans and fills them with false.
     private static readonly MethodInfo? _baseItemIsVisible = typeof(BaseItem)
         .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-        .FirstOrDefault(m => m.Name == "IsVisible" && m.GetParameters().Length == 1);
+        .Where(m =>
+        {
+            if (m.Name != "IsVisible")
+            {
+                return false;
+            }
+
+            var parameters = m.GetParameters();
+            return parameters.Length >= 1 && parameters.Skip(1).All(p => p.ParameterType == typeof(bool));
+        })
+        .OrderBy(m => m.GetParameters().Length)
+        .FirstOrDefault();
     private static readonly Type? _baseItemIsVisibleUserType =
         _baseItemIsVisible?.GetParameters()[0].ParameterType;
+    private static readonly int _baseItemIsVisibleParamCount = _baseItemIsVisible?.GetParameters().Length ?? 0;
 
     private readonly ILibraryManager _libraryManager;
     private readonly MoonfinSettingsService _settingsService;
@@ -279,12 +293,26 @@ public class NewMediaNotifier : IHostedService, IDisposable
 
         try
         {
-            return _baseItemIsVisible!.Invoke(item, [user]) is true;
+            return _baseItemIsVisible!.Invoke(item, BuildIsVisibleArgs(user)) is true;
         }
         catch
         {
             return true;
         }
+    }
+
+    // False for every trailing boolean (skipAllowedTagsCheck today), so no check
+    // inside IsVisible is skipped.
+    private static object?[] BuildIsVisibleArgs(object user)
+    {
+        var args = new object?[_baseItemIsVisibleParamCount];
+        args[0] = user;
+        for (var i = 1; i < args.Length; i++)
+        {
+            args[i] = false;
+        }
+
+        return args;
     }
 
     private sealed class PendingGroup

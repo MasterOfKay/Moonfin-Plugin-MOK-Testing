@@ -42,10 +42,24 @@ public class MoonfinController : ControllerBase
     private static readonly PropertyInfo? _userManagerUsersProperty = _userManagerType?.GetProperty("Users");
     private static readonly MethodInfo? _internalItemsQuerySetUser = typeof(InternalItemsQuery).GetMethod("SetUser", BindingFlags.Public | BindingFlags.Instance);
     private static readonly PropertyInfo? _internalItemsQueryUserProperty = typeof(InternalItemsQuery).GetProperty(nameof(InternalItemsQuery.User), BindingFlags.Public | BindingFlags.Instance);
+    // IsVisible grew a skipAllowedTagsCheck parameter in Jellyfin 10.11, so the lookup
+    // takes any overload whose extra parameters are booleans and fills them with false.
     private static readonly MethodInfo? _baseItemIsVisible = typeof(BaseItem)
         .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-        .FirstOrDefault(m => m.Name == "IsVisible" && m.GetParameters().Length == 1);
+        .Where(m =>
+        {
+            if (m.Name != "IsVisible")
+            {
+                return false;
+            }
+
+            var parameters = m.GetParameters();
+            return parameters.Length >= 1 && parameters.Skip(1).All(p => p.ParameterType == typeof(bool));
+        })
+        .OrderBy(m => m.GetParameters().Length)
+        .FirstOrDefault();
     private static readonly Type? _baseItemIsVisibleUserType = _baseItemIsVisible?.GetParameters()[0].ParameterType;
+    private static readonly int _baseItemIsVisibleParamCount = _baseItemIsVisible?.GetParameters().Length ?? 0;
 
     public MoonfinController(
         MoonfinSettingsService settingsService,
@@ -1287,23 +1301,38 @@ public class MoonfinController : ControllerBase
     }
 
     /// <summary>
-    /// Invokes BaseItem.IsVisible(User) via reflection so we stay compatible with the
-    /// User type change between Jellyfin 10.10 and 10.11. Fails closed: if the call
-    /// throws or cannot be invoked, the item is treated as not visible.
+    /// Invokes BaseItem.IsVisible via reflection so we stay compatible with the User type
+    /// change between Jellyfin 10.10 and 10.11 and the skipAllowedTagsCheck parameter
+    /// 10.11 added. Fails closed: if the method can't be resolved or invoked, the item
+    /// is treated as not visible.
     /// </summary>
     private static bool IsItemVisibleToUser(BaseItem item, object queryUser)
     {
-        if (_baseItemIsVisible == null || _baseItemIsVisibleUserType == null) return true;
-        if (!_baseItemIsVisibleUserType.IsInstanceOfType(queryUser)) return true;
+        if (_baseItemIsVisible == null || _baseItemIsVisibleUserType == null) return false;
+        if (!_baseItemIsVisibleUserType.IsInstanceOfType(queryUser)) return false;
 
         try
         {
-            return _baseItemIsVisible.Invoke(item, [queryUser]) is true;
+            return _baseItemIsVisible.Invoke(item, BuildIsVisibleArgs(queryUser)) is true;
         }
         catch
         {
             return false;
         }
+    }
+
+    // False for every trailing boolean (skipAllowedTagsCheck today), so no check
+    // inside IsVisible is skipped.
+    private static object?[] BuildIsVisibleArgs(object user)
+    {
+        var args = new object?[_baseItemIsVisibleParamCount];
+        args[0] = user;
+        for (var i = 1; i < args.Length; i++)
+        {
+            args[i] = false;
+        }
+
+        return args;
     }
 
     /// <summary>
