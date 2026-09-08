@@ -53,7 +53,6 @@ jobs:
               ['Emby build', outcomes.emby_build, 'emby-build.log'],
               ['Tests', outcomes.tests, 'tests.log'],
               ['Salvage tests', outcomes.salvage_tests, 'salvage-tests.log'],
-              ['ROM size tests', outcomes.rom_size_tests, 'rom-size-tests.log'],
               ['Emby tests', outcomes.emby_tests, 'emby-tests.log'],
             ];
             const failed = STEPS.filter(

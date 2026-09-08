@@ -279,6 +279,28 @@ public class GamesServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetExtractedRomInfo_AgreesWhenAKnownExtensionLosesOnSize()
+    {
+        AssertReportedSizeMatchesWhatIsServed(("readme.txt", new byte[4096]), ("game.nes", new byte[512]));
+    }
+
+    [Fact]
+    public void GetExtractedRomInfo_AgreesWhenNothingIsRecognisableAndTheLargestEntryWins()
+    {
+        AssertReportedSizeMatchesWhatIsServed(("a.dat", new byte[128]), ("b.dat", new byte[8192]));
+    }
+
+    [Fact]
+    public void GetExtractedRomInfo_AgreesOnAnArchiveCarryingADirectoryEntry()
+    {
+        // Real ROM archives carry directory entries, which have no content to serve.
+        AssertReportedSizeMatchesWhatIsServed(
+            ("disc/", []),
+            ("disc/game.sfc", new byte[2048]),
+            ("disc/notes.txt", new byte[16]));
+    }
+
+    [Fact]
     public void GetExtractedRomInfo_ReturnsNullForAnUnreadableArchive()
     {
         var archivePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
@@ -556,6 +578,28 @@ public class GamesServiceTests : IDisposable
         var gameId = Assert.Single(games).Id;
 
         return (service, libraryItemId, gameId);
+    }
+
+    // A HEAD reports GetExtractedRomInfo while the GET sends ExtractRomFromArchive, and the client
+    // compares the two to decide whether its cached copy is still good, so they have to agree on
+    // every archive shape. The payloads are zeroes written through the default compression, so a
+    // length read off the compressed field would stand out rather than happen to match.
+    private static void AssertReportedSizeMatchesWhatIsServed(params (string Name, byte[] Data)[] entries)
+    {
+        var archivePath = ZipFixtures.WriteZip(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip", entries);
+        try
+        {
+            var extracted = GamesService.ExtractRomFromArchive(archivePath);
+            var info = GamesService.GetExtractedRomInfo(archivePath);
+
+            Assert.NotNull(extracted);
+            Assert.NotNull(info);
+            Assert.Equal(extracted!.Length, info.Value.Length);
+        }
+        finally
+        {
+            File.Delete(archivePath);
+        }
     }
 
     private static GamePathResolver CreatePathResolver(params string[] locations)
