@@ -45,13 +45,15 @@ jobs:
             const marker = '<!-- moonfin-build-result -->';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.payload.workflow_run.id}`;
 
-            // The build fails the run when any of these fails, so all three have to
+            // The build fails the run when any of these fails, so every one has to
             // be reported or a red run can carry a green comment. A build from
             // before a step existed reports no outcome, which is not a failure.
             const STEPS = [
               ['Jellyfin build', outcomes.backend_build, 'backend-build.log'],
               ['Emby build', outcomes.emby_build, 'emby-build.log'],
               ['Tests', outcomes.tests, 'tests.log'],
+              ['Salvage tests', outcomes.salvage_tests, 'salvage-tests.log'],
+              ['ROM size tests', outcomes.rom_size_tests, 'rom-size-tests.log'],
             ];
             const failed = STEPS.filter(
               ([, outcome]) => outcome !== undefined && outcome !== 'success');

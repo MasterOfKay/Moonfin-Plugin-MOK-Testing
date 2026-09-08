@@ -4,8 +4,9 @@ using System.Text.Json.Serialization;
 using Moonfin.Server.Models;
 using Moonfin.Server.Services;
 
-// Assert-style harness for JsonSalvage and FileHealer. The repo has no test framework, so
-// this mirrors tools/verify-plugin: run it, non-zero exit means failure.
+// Assert-style harness for JsonSalvage and FileHealer. The truncation sweep below runs
+// once per byte of the envelope, so a loop suits it better than one named case per
+// offset. Run it, and a non-zero exit means failure.
 //
 //   dotnet run --project Jellyfin/tools/salvage-tests -c Release
 

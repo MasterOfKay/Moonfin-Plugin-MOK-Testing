@@ -86,8 +86,30 @@ jobs:
             -c Release \
             2>&1 | tee "${{ runner.temp }}/tests.log"
 
+      # These two assert and exit rather than reporting through a test runner.
+      - name: Run salvage tests
+        id: salvage_tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          dotnet run --project Jellyfin/tools/salvage-tests -c Release \
+            2>&1 | tee "${{ runner.temp }}/salvage-tests.log"
+
+      - name: Run ROM size tests
+        id: rom_size_tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          dotnet run --project Jellyfin/tools/rom-size-tests -c Release \
+            2>&1 | tee "${{ runner.temp }}/rom-size-tests.log"
+
       - name: Fail if any step failed
-        if: steps.backend_build.outcome != 'success' || steps.emby_build.outcome != 'success' || steps.tests.outcome != 'success'
+        if: >-
+          steps.backend_build.outcome != 'success' ||
+          steps.emby_build.outcome != 'success' ||
+          steps.tests.outcome != 'success' ||
+          steps.salvage_tests.outcome != 'success' ||
+          steps.rom_size_tests.outcome != 'success'
         run: exit 1
 
       - name: Save build results
@@ -102,12 +124,14 @@ jobs:
             "backend_build": "${{ steps.backend_build.outcome }}",
             "emby_build": "${{ steps.emby_build.outcome }}",
             "tests": "${{ steps.tests.outcome }}",
+            "salvage_tests": "${{ steps.salvage_tests.outcome }}",
+            "rom_size_tests": "${{ steps.rom_size_tests.outcome }}",
             "jellyfin_abi": "${{ steps.jf_meta.outputs.abi }}",
             "emby_version": "${{ steps.emby_build.outputs.version }}"
           }
           EOF
 
-          for log in backend-build.log emby-build.log tests.log; do
+          for log in backend-build.log emby-build.log tests.log salvage-tests.log rom-size-tests.log; do
             if [ -f "${{ runner.temp }}/$log" ]; then
               cp "${{ runner.temp }}/$log" "${{ runner.temp }}/build-results/"
             fi
