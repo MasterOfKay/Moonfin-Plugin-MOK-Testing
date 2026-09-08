@@ -14,6 +14,13 @@ on:
 permissions:
   issues: write
 
+# Opening an issue fires "opened" alongside one "labeled" per label the form
+# applies, so several runs start at once. They all read the comments before any
+# has posted, and all of them post. Queue them per issue instead.
+concurrency:
+  group: require-bug-evidence-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   check-issue:
     runs-on: ubuntu-latest
@@ -58,8 +65,8 @@ jobs:
             const rest = title.slice(prefix.length).replace(/[\s.!?-]+$/, '').trim();
             const tagged = tag => prefix.toLowerCase().includes(`[${tag}]`);
 
-            // Only the tag is worth reading here. The labels the forms ask for have never
-            // been created on this repo, so no issue has ever carried one.
+            // Read the tag rather than the label, since this runs on "opened" at the
+            // same moment the form is still applying its labels.
             const needsImage = tagged('plugin') || tagged('settings');
 
             const GENERIC = /^(bug|issue|issues|problem|problems|help|help me|crash|crashes|broken|error|errors|fix|please fix|question|feature|request|title|test|n\/?a|none|plugin|moonbase|settings|jellyfin|emby|seerr|not working|doesn'?t work|does not work|no work)$/i;
@@ -157,7 +164,7 @@ jobs:
               '',
               'It was opened without one of the forms, so the fields that say which version, platform and setup this involves are all missing.',
               '',
-              'The forms also decide how an issue gets labelled, and those labels are what tell this bot whether to ask you for a screenshot. Skipping the form means nobody was prompted for the one thing the report actually needs.',
+              'The forms also decide how an issue gets labelled and routed. Skipping the form means nobody was prompted for the one thing the report actually needs.',
               '',
               `Please open a fresh one from [New issue](https://github.com/${context.repo.owner}/${context.repo.repo}/issues/new/choose) and pick the form that fits, then this can be closed as a duplicate. If you would rather not start over, paste the form's answers into a comment below and they will be picked up.`,
               '',
