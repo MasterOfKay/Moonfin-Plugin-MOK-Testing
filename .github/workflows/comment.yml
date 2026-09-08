@@ -51,8 +51,8 @@ jobs:
             const STEPS = [
               ['Jellyfin build', outcomes.backend_build, 'backend-build.log'],
               ['Emby build', outcomes.emby_build, 'emby-build.log'],
-              ['Tests', outcomes.tests, 'tests.log'],
-              ['Salvage tests', outcomes.salvage_tests, 'salvage-tests.log'],
+              ['Jellyfin tests', outcomes.tests, 'tests.log'],
+              ['Jellyfin salvage tests', outcomes.salvage_tests, 'salvage-tests.log'],
               ['Emby tests', outcomes.emby_tests, 'emby-tests.log'],
             ];
             const failed = STEPS.filter(
@@ -64,7 +64,7 @@ jobs:
               lines.push(
                 '## Build Successful',
                 '',
-                'Both plugins compiled against **.NET 8** and the tests passed.',
+                'Both plugins compiled against **.NET 8**, and both test suites passed.',
               );
             } else {
               lines.push(
