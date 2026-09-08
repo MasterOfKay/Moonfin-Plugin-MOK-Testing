@@ -90,6 +90,37 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public int StudioLogosMaxAgeDays { get; set; } = 30;
 
+    // ---------------------------------------------------------------------
+    // Anime filler, canon and recap markers
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Classifies anime episodes as manga canon, anime canon, mixed or filler so Moonfin
+    /// clients can badge them. Data comes from animefillerlist.com, which needs no account
+    /// or key. Off by default.
+    /// </summary>
+    public bool AnimeMarkersEnabled { get; set; }
+
+    /// <summary>
+    /// Jellyfin library IDs (GUID strings) to look for anime. When empty, every library
+    /// is considered.
+    /// </summary>
+    public List<string> AnimeMarkerLibraryIds { get; set; } = new();
+
+    /// <summary>
+    /// Also ask MyAnimeList which episodes are recaps, which AnimeFillerList does not
+    /// categorise. Best-effort and additive: when the lookup fails nothing is recorded, so
+    /// the filler data is never held up by it.
+    /// </summary>
+    public bool AnimeMarkerRecapLookup { get; set; } = true;
+
+    /// <summary>
+    /// How long a cached show stays fresh before the sync task refetches it. A finished
+    /// show's classifications never change, so this mostly governs how quickly a currently
+    /// airing show picks up its new episodes.
+    /// </summary>
+    public int AnimeMarkerMaxAgeDays { get; set; } = 30;
+
     /// <summary>
     /// Optional default server URL shown in the Moonfin web Add Server dialog.
     /// </summary>

@@ -632,6 +632,74 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h3 class="sectionTitle">Anime Filler &amp; Recap Markers</h3>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeMarkersEnabled" is="emby-checkbox" />
+                                <span>Classify anime episodes as canon, mixed or filler</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Nightly task that matches your anime against
+                                <a href="https://www.animefillerlist.com/" target="_blank">AnimeFillerList</a> so Moonfin
+                                clients can badge filler episodes. No account or API key is needed. Series are matched by
+                                title, and only shows the site actually lists are fetched.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Libraries to look in</label>
+                            <div id="AnimeMarkerLibraryPicker" style="max-height:200px;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:4px;"></div>
+                            <div class="fieldDescription">
+                                Leave everything unchecked to consider every library. Matching is a local title lookup, so
+                                narrowing this only helps if a non-anime show shares a title with an anime.
+                            </div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeMarkerRecapLookup" is="emby-checkbox" />
+                                <span>Also mark recap episodes (uses MyAnimeList)</span>
+                            </label>
+                            <div class="fieldDescription">
+                                AnimeFillerList has no recap category, so this asks MyAnimeList as well. It is best-effort
+                                and additive: if that lookup fails, the filler data is unaffected.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AnimeMarkerMaxAgeDays">Marker refresh age (days)</label>
+                            <input type="number" id="AnimeMarkerMaxAgeDays" is="emby-input" min="1" max="365" step="1" />
+                            <div class="fieldDescription">
+                                Shows older than this are re-fetched (default 30). A finished show's classifications never
+                                change, so this mainly governs how quickly an airing show picks up new episodes.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" id="AnimeMarkerDiagBtn" is="emby-button" class="raised">Check matching</button>
+                                <button type="button" id="AnimeMarkerClearBtn" is="emby-button" class="raised">Clear marker cache</button>
+                            </div>
+                            <div class="fieldDescription">
+                                Markers appear after the <strong>Moonfin Anime Markers Sync</strong> task has run. You can
+                                start it now from Dashboard &rarr; Scheduled Tasks.
+                            </div>
+                            <div id="AnimeMarkerDiagStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AnimeMarkerPreviewName">Preview a series</label>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                                <input type="text" id="AnimeMarkerPreviewName" is="emby-input" placeholder="One Piece" style="flex:1;min-width:200px;" />
+                                <button type="button" id="AnimeMarkerPreviewBtn" is="emby-button" class="raised">Preview</button>
+                                <button type="button" id="AnimeMarkerFetchBtn" is="emby-button" class="raised">Fetch now</button>
+                            </div>
+                            <div class="fieldDescription">
+                                Type a series name from your library and press Preview to see exactly which of your
+                                episodes each marker landed on. <strong>Fetch now</strong> pulls that one show
+                                immediately (about ten seconds, the site's crawl delay) instead of waiting for the task.
+                            </div>
+                            <div id="AnimeMarkerPreviewStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
+                            <div id="AnimeMarkerPreviewResult" style="margin-top:8px;max-height:420px;overflow:auto;"></div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h3 class="sectionTitle">TMDB Integration</h3>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">Server-wide TMDB API Key</label>
@@ -5154,6 +5222,55 @@
                     });
                 }
 
+                var animeMarkerDiagButton = document.querySelector('#AnimeMarkerDiagBtn');
+                if (animeMarkerDiagButton && !animeMarkerDiagButton.dataset.bound) {
+                    animeMarkerDiagButton.dataset.bound = 'true';
+                    animeMarkerDiagButton.addEventListener('click', function() {
+                        animeMarkerDiagButton.disabled = true;
+                        loadAnimeMarkerDiagnostics();
+                        setTimeout(function() { animeMarkerDiagButton.disabled = false; }, 2000);
+                    });
+                }
+
+                var animeMarkerClearButton = document.querySelector('#AnimeMarkerClearBtn');
+                if (animeMarkerClearButton && !animeMarkerClearButton.dataset.bound) {
+                    animeMarkerClearButton.dataset.bound = 'true';
+                    animeMarkerClearButton.addEventListener('click', function() {
+                        animeMarkerClearButton.disabled = true;
+                        clearAnimeMarkerCache();
+                        setTimeout(function() { animeMarkerClearButton.disabled = false; }, 2000);
+                    });
+                }
+
+                var animeMarkerPreviewButton = document.querySelector('#AnimeMarkerPreviewBtn');
+                if (animeMarkerPreviewButton && !animeMarkerPreviewButton.dataset.bound) {
+                    animeMarkerPreviewButton.dataset.bound = 'true';
+                    animeMarkerPreviewButton.addEventListener('click', function() {
+                        previewAnimeMarkers();
+                    });
+                }
+
+                var animeMarkerFetchButton = document.querySelector('#AnimeMarkerFetchBtn');
+                if (animeMarkerFetchButton && !animeMarkerFetchButton.dataset.bound) {
+                    animeMarkerFetchButton.dataset.bound = 'true';
+                    animeMarkerFetchButton.addEventListener('click', function() {
+                        animeMarkerFetchButton.disabled = true;
+                        fetchAnimeMarkersNow();
+                        setTimeout(function() { animeMarkerFetchButton.disabled = false; }, 15000);
+                    });
+                }
+
+                var animeMarkerPreviewInput = document.querySelector('#AnimeMarkerPreviewName');
+                if (animeMarkerPreviewInput && !animeMarkerPreviewInput.dataset.bound) {
+                    animeMarkerPreviewInput.dataset.bound = 'true';
+                    animeMarkerPreviewInput.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            previewAnimeMarkers();
+                        }
+                    });
+                }
+
                 var reprovisionButton = document.querySelector('#ReprovisionWebhookBtn');
                 if (reprovisionButton && !reprovisionButton.dataset.bound) {
                     reprovisionButton.dataset.bound = 'true';
@@ -5303,6 +5420,10 @@
                     document.querySelector('#ImdbListsEnabled').checked = config.ImdbListsEnabled !== false;
                     document.querySelector('#StudioLogosEnabled').checked = config.StudioLogosEnabled !== false;
                     document.querySelector('#StudioLogosMaxAgeDays').value = config.StudioLogosMaxAgeDays || 30;
+                    document.querySelector('#AnimeMarkersEnabled').checked = config.AnimeMarkersEnabled === true;
+                    document.querySelector('#AnimeMarkerRecapLookup').checked = config.AnimeMarkerRecapLookup !== false;
+                    document.querySelector('#AnimeMarkerMaxAgeDays').value = config.AnimeMarkerMaxAgeDays || 30;
+                    loadLibraryPicker('#AnimeMarkerLibraryPicker', 'animeMarkerLibraryCb', config.AnimeMarkerLibraryIds || []);
                     document.querySelector('#WebDefaultServerUrl').value = config.WebDefaultServerUrl || '';
                     document.querySelector('#WebForcedServerUrl').value = config.WebForcedServerUrl || '';
                     document.querySelector('#WebEnableWebRtcScan').checked = config.WebEnableWebRtcScan !== false;
@@ -5674,8 +5795,8 @@
                     refreshCoresStatus();
                 }
 
-                function loadGameLibraryPicker(selectedIds) {
-                    var picker = document.querySelector('#GameLibraryPicker');
+                function loadLibraryPicker(pickerSelector, checkboxClass, selectedIds) {
+                    var picker = document.querySelector(pickerSelector);
                     if (!picker) return;
                     picker.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:0.9em;">Loading...</div>';
 
@@ -5691,12 +5812,219 @@
                             var item = items[i];
                             var isChecked = selectedIds.indexOf(item.Id) !== -1;
                             html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;' + (isChecked ? 'background:rgba(0,164,220,0.1);' : '') + '">' +
-                                '<input type="checkbox" class="gameLibraryCb" data-id="' + item.Id + '"' + (isChecked ? ' checked' : '') + ' style="accent-color:#00a4dc;width:16px;height:16px;">' +
+                                '<input type="checkbox" class="' + checkboxClass + '" data-id="' + item.Id + '"' + (isChecked ? ' checked' : '') + ' style="accent-color:#00a4dc;width:16px;height:16px;">' +
                                 '<div style="flex:1;min-width:0;"><div style="font-size:0.9em;color:rgba(255,255,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(item.Name || 'Untitled') + '</div>' +
                                 '<div style="font-size:0.75em;color:rgba(255,255,255,0.4);">' + esc(item.CollectionType || 'mixed') + '</div>' +
                                 '</div></label>';
                         }
                         picker.innerHTML = html;
+                    });
+                }
+
+                function loadGameLibraryPicker(selectedIds) {
+                    loadLibraryPicker('#GameLibraryPicker', 'gameLibraryCb', selectedIds);
+                }
+
+                function loadAnimeMarkerDiagnostics() {
+                    var status = document.querySelector('#AnimeMarkerDiagStatus');
+                    if (!status) return;
+
+                    status.textContent = 'Checking every series against the AnimeFillerList catalogue...';
+
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('Moonfin/AnimeMarkers/Diagnostics'),
+                        dataType: 'json'
+                    }).then(function(info) {
+                        if (!info.catalogLoaded) {
+                            status.textContent = info.error || 'The AnimeFillerList catalogue could not be loaded.';
+                            return;
+                        }
+
+                        var lines = [
+                            info.seriesMatched + ' of ' + info.seriesConsidered + ' series matched a show (catalogue holds ' + info.catalogShows + ')',
+                            info.showsCached + ' shows cached, ' + info.showsPending + ' waiting for the next sync',
+                            info.episodesClassified + ' episodes classified, ' + info.episodesFlagged + ' of them filler or mixed'
+                        ];
+
+                        if (info.unmatchedCount > 0) {
+                            lines.push(info.unmatchedCount + ' series matched nothing, for example: ' + (info.unmatched || []).slice(0, 8).join(', '));
+                        }
+
+                        status.innerHTML = lines.map(function (line) { return esc(line); }).join('<br>');
+                    }, function () {
+                        status.textContent = 'Could not read the anime marker diagnostics.';
+                    });
+                }
+
+                var ANIME_MARKER_COLORS = {
+                    Filler: '#e5534b',
+                    Mixed: '#d29922',
+                    AnimeCanon: '#3fb950',
+                    MangaCanon: '#58a6ff'
+                };
+
+                var ANIME_MARKER_LABELS = {
+                    Filler: 'Filler',
+                    Mixed: 'Mixed',
+                    AnimeCanon: 'Anime canon',
+                    MangaCanon: 'Manga canon'
+                };
+
+                // Resolves the typed name to one series id. Uses Jellyfin's own item search so
+                // the plugin does not need a lookup endpoint of its own.
+                function findAnimeMarkerSeries(name) {
+                    return ApiClient.getItems(ApiClient.getCurrentUserId(), {
+                        IncludeItemTypes: 'Series',
+                        Recursive: true,
+                        SearchTerm: name,
+                        Limit: 1,
+                        Fields: 'Path'
+                    }).then(function (result) {
+                        var items = (result && result.Items) || [];
+                        return items.length > 0 ? items[0] : null;
+                    });
+                }
+
+                function renderAnimeMarkerPreview(info) {
+                    var result = document.querySelector('#AnimeMarkerPreviewResult');
+                    var status = document.querySelector('#AnimeMarkerPreviewStatus');
+                    if (!result || !status) return;
+
+                    result.innerHTML = '';
+
+                    if (!info.matched) {
+                        status.textContent = info.series + ' did not match any show on AnimeFillerList. ' + (info.hint || '');
+                        return;
+                    }
+
+                    if (info.pending) {
+                        status.textContent = info.series + ' matched "' + info.title + '". ' + (info.hint || '');
+                        return;
+                    }
+
+                    status.innerHTML =
+                        esc(info.series) + ' matched <strong>' + esc(info.title) + '</strong> (' + esc(info.slug) + ')<br>' +
+                        'The site lists ' + info.showEpisodes + ' episodes; you have ' + info.libraryEpisodes +
+                        ', of which ' + info.markedEpisodes + ' got a marker (' + info.fillerEpisodes + ' filler).<br>' +
+                        'Your library numbers this series <strong>' + esc(info.numbering) + '</strong>' +
+                        (info.recapKnown ? ', and recap flags were looked up.' : ', and recap flags were not looked up.');
+
+                    var rows = info.episodes || [];
+                    if (rows.length === 0) return;
+
+                    var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85em;">' +
+                        '<thead><tr style="text-align:left;color:rgba(255,255,255,0.5);">' +
+                        '<th style="padding:4px 8px;">Episode</th><th style="padding:4px 8px;">Abs</th>' +
+                        '<th style="padding:4px 8px;">Title</th><th style="padding:4px 8px;">Marker</th>' +
+                        '</tr></thead><tbody>';
+
+                    for (var i = 0; i < rows.length; i++) {
+                        var row = rows[i];
+                        var color = ANIME_MARKER_COLORS[row.kind] || 'rgba(255,255,255,0.3)';
+                        var label = ANIME_MARKER_LABELS[row.kind] || 'no data';
+                        if (row.recap) {
+                            label += ' + recap';
+                        }
+
+                        html += '<tr style="border-top:1px solid rgba(255,255,255,0.06);">' +
+                            '<td style="padding:4px 8px;white-space:nowrap;color:rgba(255,255,255,0.6);">S' +
+                            String(row.season) + 'E' + String(row.index) + '</td>' +
+                            '<td style="padding:4px 8px;color:rgba(255,255,255,0.4);">' + String(row.absolute) + '</td>' +
+                            '<td style="padding:4px 8px;">' + esc(row.name || '') + '</td>' +
+                            '<td style="padding:4px 8px;white-space:nowrap;"><span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:0.9em;background:' +
+                            color + '33;color:' + color + ';">' + esc(label) + '</span></td>' +
+                            '</tr>';
+                    }
+
+                    result.innerHTML = html + '</tbody></table>';
+                }
+
+                function previewAnimeMarkers() {
+                    var input = document.querySelector('#AnimeMarkerPreviewName');
+                    var status = document.querySelector('#AnimeMarkerPreviewStatus');
+                    var result = document.querySelector('#AnimeMarkerPreviewResult');
+                    if (!input || !status || !result) return;
+
+                    var name = (input.value || '').trim();
+                    if (!name) {
+                        status.textContent = 'Type a series name first.';
+                        return;
+                    }
+
+                    result.innerHTML = '';
+                    status.textContent = 'Looking up "' + name + '"...';
+
+                    findAnimeMarkerSeries(name).then(function (series) {
+                        if (!series) {
+                            status.textContent = 'No series called "' + name + '" is in your library.';
+                            return;
+                        }
+
+                        return ApiClient.ajax({
+                            type: 'GET',
+                            url: ApiClient.getUrl('Moonfin/AnimeMarkers/Preview', { seriesId: series.Id }),
+                            dataType: 'json'
+                        }).then(renderAnimeMarkerPreview);
+                    }).catch(function () {
+                        status.textContent = 'Could not build the preview.';
+                    });
+                }
+
+                function fetchAnimeMarkersNow() {
+                    var input = document.querySelector('#AnimeMarkerPreviewName');
+                    var status = document.querySelector('#AnimeMarkerPreviewStatus');
+                    if (!input || !status) return;
+
+                    var name = (input.value || '').trim();
+                    if (!name) {
+                        status.textContent = 'Type a series name first.';
+                        return;
+                    }
+
+                    status.textContent = 'Fetching "' + name + '" from AnimeFillerList, this takes about ten seconds...';
+
+                    findAnimeMarkerSeries(name).then(function (series) {
+                        if (!series) {
+                            status.textContent = 'No series called "' + name + '" is in your library.';
+                            return;
+                        }
+
+                        return ApiClient.ajax({
+                            type: 'POST',
+                            url: ApiClient.getUrl('Moonfin/AnimeMarkers/Refresh', { seriesId: series.Id }),
+                            dataType: 'json'
+                        }).then(function (info) {
+                            if (!info.matched) {
+                                status.textContent = 'That series does not match any show on AnimeFillerList.';
+                                return;
+                            }
+
+                            if (!info.fetched) {
+                                status.textContent = 'Matched "' + info.slug + '" but the page could not be read. Try again shortly.';
+                                return;
+                            }
+
+                            status.textContent = 'Fetched ' + info.episodes + ' episodes for "' + info.slug + '". Building the preview...';
+                            previewAnimeMarkers();
+                        });
+                    }).catch(function () {
+                        status.textContent = 'Could not fetch that series.';
+                    });
+                }
+
+                function clearAnimeMarkerCache() {
+                    var status = document.querySelector('#AnimeMarkerDiagStatus');
+                    if (!status) return;
+
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Moonfin/AnimeMarkers/ClearCache'),
+                        dataType: 'json'
+                    }).then(function (result) {
+                        status.textContent = 'Cleared ' + (result.cleared || 0) + ' cached shows. Run the Anime Markers Sync task to fetch them again.';
+                    }, function () {
+                        status.textContent = 'Could not clear the anime marker cache.';
                     });
                 }
 
@@ -5776,6 +6104,12 @@
                         config.ImdbListsEnabled = document.querySelector('#ImdbListsEnabled').checked;
                         config.StudioLogosEnabled = document.querySelector('#StudioLogosEnabled').checked;
                         config.StudioLogosMaxAgeDays = parseInt(document.querySelector('#StudioLogosMaxAgeDays').value, 10) || 30;
+                        config.AnimeMarkersEnabled = document.querySelector('#AnimeMarkersEnabled').checked;
+                        config.AnimeMarkerRecapLookup = document.querySelector('#AnimeMarkerRecapLookup').checked;
+                        config.AnimeMarkerMaxAgeDays = parseInt(document.querySelector('#AnimeMarkerMaxAgeDays').value, 10) || 30;
+                        config.AnimeMarkerLibraryIds = Array.prototype.slice.call(
+                            document.querySelectorAll('.animeMarkerLibraryCb:checked')
+                        ).map(function (cb) { return cb.getAttribute('data-id'); });
                         config.WebDefaultServerUrl = document.querySelector('#WebDefaultServerUrl').value || null;
                         config.WebForcedServerUrl = document.querySelector('#WebForcedServerUrl').value || null;
                         config.WebEnableWebRtcScan = document.querySelector('#WebEnableWebRtcScan').checked;

@@ -1,0 +1,240 @@
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MediaBrowser.Controller.Entities;
+using Microsoft.Extensions.Logging;
+
+namespace Moonfin.Server.Services;
+
+/// <summary>
+/// Fetches the MyAnimeList recap flags for a series, using the Jikan API and AniList as a fallback for resolving ids.
+/// </summary>
+public class AnimeRecapFetchService
+{
+    private const string JikanBase = "https://api.jikan.moe/v4";
+    private const string AniListEndpoint = "https://graphql.anilist.co";
+
+    /// <summary>Jikan allows about 3/sec and 60/min.</summary>
+    private static readonly TimeSpan MinRequestSpacing = TimeSpan.FromSeconds(2);
+
+    /// <summary>Guards against a malformed pagination response spinning forever. 100 episodes a page.</summary>
+    private const int MaxPages = 30;
+
+    private static readonly SemaphoreSlim RequestGate = new(1, 1);
+    private static DateTimeOffset _lastRequestAt = DateTimeOffset.MinValue;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<AnimeRecapFetchService> _logger;
+
+    public AnimeRecapFetchService(IHttpClientFactory httpClientFactory, ILogger<AnimeRecapFetchService> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Fetches the MyAnimeList recap flags for a series, using the Jikan API and AniList as a fallback for resolving ids.
+    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// </summary>
+    public async Task<int?> TryResolveMalIdAsync(BaseItem series, CancellationToken cancellationToken)
+    {
+        if (TryGetProviderInt(series, out var malId, "MyAnimeList", "Mal", "MAL"))
+        {
+            return malId;
+        }
+
+        if (TryGetProviderInt(series, out var anilistId, "AniList", "Anilist"))
+        {
+            return await ResolveViaAniListAsync(anilistId, cancellationToken).ConfigureAwait(false);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Fetches the MyAnimeList recap flags for a series, using the Jikan API and AniList as a fallback for resolving ids.
+    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// </summary>
+    public async Task<RecapLookup?> FetchRecapsAsync(int malId, CancellationToken cancellationToken)
+    {
+        var recaps = new HashSet<int>();
+        var episodeCount = 0;
+
+        for (var page = 1; page <= MaxPages; page++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var response = await GetEpisodePageAsync(malId, page, cancellationToken).ConfigureAwait(false);
+
+            if (response == null)
+            {
+                return null;
+            }
+
+            foreach (var episode in response.Data)
+            {
+                episodeCount++;
+
+                if (episode.Recap)
+                {
+                    recaps.Add(episode.MalId);
+                }
+            }
+
+            if (response.Pagination?.HasNextPage != true)
+            {
+                break;
+            }
+        }
+
+        return new RecapLookup(recaps, episodeCount);
+    }
+
+    private async Task<JikanEpisodesResponse?> GetEpisodePageAsync(int malId, int page, CancellationToken cancellationToken)
+    {
+        await WaitForSlotAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(20);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Moonfin/1.0");
+
+            var url = JikanBase + "/anime/" + malId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + "/episodes?page=" + page.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogDebug(
+                    "Recap lookup for MAL {MalId} page {Page} returned {Status}", malId, page, (int)response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<JikanEpisodesResponse>(json, JsonOptions);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Recap lookup for MAL {MalId} page {Page} failed", malId, page);
+            return null;
+        }
+    }
+
+    private async Task<int?> ResolveViaAniListAsync(int anilistId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Moonfin/1.0");
+
+            var body = JsonSerializer.Serialize(new
+            {
+                query = "query($id:Int){Media(id:$id,type:ANIME){idMal}}",
+                variables = new { id = anilistId }
+            });
+
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+            using var response = await client.PostAsync(AniListEndpoint, content, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(json);
+
+            if (document.RootElement.TryGetProperty("data", out var data) &&
+                data.TryGetProperty("Media", out var media) &&
+                media.ValueKind == JsonValueKind.Object &&
+                media.TryGetProperty("idMal", out var idMal) &&
+                idMal.ValueKind == JsonValueKind.Number &&
+                idMal.TryGetInt32(out var malId))
+            {
+                return malId;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "AniList idMal lookup failed for {AniListId}", anilistId);
+        }
+
+        return null;
+    }
+
+    /// <summary>Spaces Jikan requests process-wide.</summary>
+    private static async Task WaitForSlotAsync(CancellationToken cancellationToken)
+    {
+        await RequestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var sinceLast = DateTimeOffset.UtcNow - _lastRequestAt;
+            if (sinceLast < MinRequestSpacing)
+            {
+                await Task.Delay(MinRequestSpacing - sinceLast, cancellationToken).ConfigureAwait(false);
+            }
+
+            _lastRequestAt = DateTimeOffset.UtcNow;
+        }
+        finally
+        {
+            RequestGate.Release();
+        }
+    }
+
+    private static bool TryGetProviderInt(BaseItem series, out int value, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            foreach (var (providerKey, providerValue) in series.ProviderIds)
+            {
+                if (string.Equals(providerKey, key, StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(providerValue?.Trim(), out value))
+                {
+                    return true;
+                }
+            }
+        }
+
+        value = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// The episode numbers MyAnimeList marks as recaps, along with how many episodes the entry has.
+    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// </summary>
+    public readonly record struct RecapLookup(HashSet<int> RecapNumbers, int EpisodeCount);
+
+    private class JikanEpisodesResponse
+    {
+        [JsonPropertyName("data")]
+        public List<JikanEpisode> Data { get; set; } = new();
+
+        [JsonPropertyName("pagination")]
+        public JikanPagination? Pagination { get; set; }
+    }
+
+    private class JikanPagination
+    {
+        [JsonPropertyName("has_next_page")]
+        public bool HasNextPage { get; set; }
+    }
+
+    private class JikanEpisode
+    {
+        /// <summary>On the episodes endpoint this is the episode number within the entry.</summary>
+        [JsonPropertyName("mal_id")]
+        public int MalId { get; set; }
+
+        [JsonPropertyName("recap")]
+        public bool Recap { get; set; }
+    }
+}
