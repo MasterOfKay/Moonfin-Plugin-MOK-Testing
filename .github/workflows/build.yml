@@ -103,13 +103,23 @@ jobs:
           dotnet run --project Jellyfin/tools/rom-size-tests -c Release \
             2>&1 | tee "${{ runner.temp }}/rom-size-tests.log"
 
+      - name: Run Emby tests
+        id: emby_tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          dotnet test Emby/tests/Emby.Plugins.Moonfin.Tests/Emby.Plugins.Moonfin.Tests.csproj \
+            -c Release \
+            2>&1 | tee "${{ runner.temp }}/emby-tests.log"
+
       - name: Fail if any step failed
         if: >-
           steps.backend_build.outcome != 'success' ||
           steps.emby_build.outcome != 'success' ||
           steps.tests.outcome != 'success' ||
           steps.salvage_tests.outcome != 'success' ||
-          steps.rom_size_tests.outcome != 'success'
+          steps.rom_size_tests.outcome != 'success' ||
+          steps.emby_tests.outcome != 'success'
         run: exit 1
 
       - name: Save build results
@@ -126,12 +136,13 @@ jobs:
             "tests": "${{ steps.tests.outcome }}",
             "salvage_tests": "${{ steps.salvage_tests.outcome }}",
             "rom_size_tests": "${{ steps.rom_size_tests.outcome }}",
+            "emby_tests": "${{ steps.emby_tests.outcome }}",
             "jellyfin_abi": "${{ steps.jf_meta.outputs.abi }}",
             "emby_version": "${{ steps.emby_build.outputs.version }}"
           }
           EOF
 
-          for log in backend-build.log emby-build.log tests.log salvage-tests.log rom-size-tests.log; do
+          for log in backend-build.log emby-build.log tests.log salvage-tests.log rom-size-tests.log emby-tests.log; do
             if [ -f "${{ runner.temp }}/$log" ]; then
               cp "${{ runner.temp }}/$log" "${{ runner.temp }}/build-results/"
             fi

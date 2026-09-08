@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!--
+      Emby.Plugins.Moonfin references MediaBrowser.Server.Core with
+      ExcludeAssets=runtime/PrivateAssets=all (host-provided by Emby at runtime, deliberately not
+      shipped with the plugin), so its types don't flow transitively via the ProjectReference
+      below. ServerMessage lives in PluginConfiguration.cs, and PluginConfiguration derives from
+      BasePluginConfiguration, so the assembly has to be loadable at test-run time. This test
+      project takes its own ordinary PackageReference (runtime assets included, matching the
+      version the plugin project restores against).
+    -->
+    <PackageReference Include="MediaBrowser.Server.Core" Version="4.9.1.90" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Emby.Plugins.Moonfin\Emby.Plugins.Moonfin.csproj" />
+  </ItemGroup>
+
+</Project>
