@@ -101,7 +101,9 @@ jobs:
             "sha": "${{ github.event.pull_request.head.sha }}",
             "backend_build": "${{ steps.backend_build.outcome }}",
             "emby_build": "${{ steps.emby_build.outcome }}",
-            "tests": "${{ steps.tests.outcome }}"
+            "tests": "${{ steps.tests.outcome }}",
+            "jellyfin_abi": "${{ steps.jf_meta.outputs.abi }}",
+            "emby_version": "${{ steps.emby_build.outputs.version }}"
           }
           EOF
 
