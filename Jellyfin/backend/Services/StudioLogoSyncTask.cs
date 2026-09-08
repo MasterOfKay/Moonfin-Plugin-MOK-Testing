@@ -5,6 +5,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
+using Moonfin.Server.Helpers;
 
 namespace Moonfin.Server.Services;
 
@@ -164,16 +165,9 @@ public class StudioLogoSyncTask : IScheduledTask
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerStartup
-        };
+        yield return TaskTriggers.Startup();
 
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerDaily,
-            TimeOfDayTicks = TimeSpan.FromHours(5).Ticks
-        };
+        yield return TaskTriggers.Daily(TimeSpan.FromHours(5));
     }
 
     private class LibraryItemInfo

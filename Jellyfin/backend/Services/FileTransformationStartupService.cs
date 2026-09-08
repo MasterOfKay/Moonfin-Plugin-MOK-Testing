@@ -72,9 +72,6 @@ public class FileTransformationStartupService : IScheduledTask
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerStartup
-        };
+        yield return TaskTriggers.Startup();
     }
 }

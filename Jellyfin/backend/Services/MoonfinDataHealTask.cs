@@ -1,5 +1,6 @@
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
+using Moonfin.Server.Helpers;
 
 namespace Moonfin.Server.Services;
 
@@ -77,9 +78,6 @@ public class MoonfinDataHealTask : IScheduledTask
     {
         // Startup only. The sweep is a no-op after its first pass, and running every boot
         // also catches corruption from outside causes like a full disk.
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerStartup
-        };
+        yield return TaskTriggers.Startup();
     }
 }

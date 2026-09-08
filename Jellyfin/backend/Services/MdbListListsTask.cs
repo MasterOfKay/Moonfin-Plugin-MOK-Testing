@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using Moonfin.Server.Api;
+using Moonfin.Server.Helpers;
 
 namespace Moonfin.Server.Services;
 
@@ -369,16 +370,9 @@ public class MdbListListsTask : IScheduledTask
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerStartup
-        };
+        yield return TaskTriggers.Startup();
 
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfo.TriggerDaily,
-            TimeOfDayTicks = TimeSpan.FromHours(4).Ticks
-        };
+        yield return TaskTriggers.Daily(TimeSpan.FromHours(4));
     }
 
     private class TmdbDetails
