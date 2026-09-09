@@ -70,6 +70,18 @@ public class AnimeEpisodeNumberingTests
     }
 
     [Fact]
+    public void RepeatedSlotsDoNotChangeTheNumberingScheme()
+    {
+        // A recursive query under a series returns each episode once per ancestor, so the
+        // caller now feeds distinct season/episode slots. Absolute numbering has to survive
+        // that: seen doubled, 144/145/207 would look like repeats and pick per-season.
+        var slots = new List<(int Season, int Index)> { (3, 144), (3, 145), (4, 207) };
+
+        Assert.True(AnimeMarkerResolver.IsAlreadyAbsolute(slots));
+        Assert.Equal(new[] { 144, 145, 207 }, AnimeMarkerResolver.AssignAbsoluteNumbers(slots));
+    }
+
+    [Fact]
     public void EmptyInputIsEmpty()
     {
         Assert.Empty(AnimeMarkerResolver.AssignAbsoluteNumbers(new List<(int, int)>()));

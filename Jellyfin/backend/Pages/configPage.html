@@ -697,6 +697,26 @@
                             <div id="AnimeMarkerPreviewStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
                             <div id="AnimeMarkerPreviewResult" style="margin-top:8px;max-height:420px;overflow:auto;"></div>
                         </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeMarkerVerboseLogging" is="emby-checkbox" />
+                                <span>Write a marker debug log</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Records every marker request a client makes and what it was answered with, to
+                                <code>anime_markers.log</code> beside the caches. Turn this on when a badge is not
+                                appearing: if a request never shows up here, the app never asked, which means the
+                                problem is in the app rather than on the server. Leave it off otherwise.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" id="AnimeMarkerLogBtn" is="emby-button" class="raised">Show log</button>
+                                <button type="button" id="AnimeMarkerClearLogBtn" is="emby-button" class="raised">Clear log</button>
+                            </div>
+                            <div id="AnimeMarkerLogStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
+                            <pre id="AnimeMarkerLogOutput" style="margin-top:8px;max-height:320px;overflow:auto;font-size:0.8em;line-height:1.45;background:rgba(0,0,0,0.35);padding:8px;border-radius:4px;white-space:pre-wrap;word-break:break-word;"></pre>
+                        </div>
                     </div>
 
                     <div class="verticalSection">
@@ -5271,6 +5291,22 @@
                     });
                 }
 
+                var animeMarkerLogButton = document.querySelector('#AnimeMarkerLogBtn');
+                if (animeMarkerLogButton && !animeMarkerLogButton.dataset.bound) {
+                    animeMarkerLogButton.dataset.bound = 'true';
+                    animeMarkerLogButton.addEventListener('click', function() {
+                        loadAnimeMarkerLog();
+                    });
+                }
+
+                var animeMarkerClearLogButton = document.querySelector('#AnimeMarkerClearLogBtn');
+                if (animeMarkerClearLogButton && !animeMarkerClearLogButton.dataset.bound) {
+                    animeMarkerClearLogButton.dataset.bound = 'true';
+                    animeMarkerClearLogButton.addEventListener('click', function() {
+                        clearAnimeMarkerLog();
+                    });
+                }
+
                 var reprovisionButton = document.querySelector('#ReprovisionWebhookBtn');
                 if (reprovisionButton && !reprovisionButton.dataset.bound) {
                     reprovisionButton.dataset.bound = 'true';
@@ -5423,6 +5459,7 @@
                     document.querySelector('#AnimeMarkersEnabled').checked = config.AnimeMarkersEnabled === true;
                     document.querySelector('#AnimeMarkerRecapLookup').checked = config.AnimeMarkerRecapLookup !== false;
                     document.querySelector('#AnimeMarkerMaxAgeDays').value = config.AnimeMarkerMaxAgeDays || 30;
+                    document.querySelector('#AnimeMarkerVerboseLogging').checked = config.AnimeMarkerVerboseLogging === true;
                     loadLibraryPicker('#AnimeMarkerLibraryPicker', 'animeMarkerLibraryCb', config.AnimeMarkerLibraryIds || []);
                     document.querySelector('#WebDefaultServerUrl').value = config.WebDefaultServerUrl || '';
                     document.querySelector('#WebForcedServerUrl').value = config.WebForcedServerUrl || '';
@@ -6013,6 +6050,52 @@
                     });
                 }
 
+                function loadAnimeMarkerLog() {
+                    var status = document.querySelector('#AnimeMarkerLogStatus');
+                    var output = document.querySelector('#AnimeMarkerLogOutput');
+                    if (!status || !output) return;
+
+                    status.textContent = 'Reading the marker log...';
+
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('Moonfin/AnimeMarkers/Log', { lines: 300 }),
+                        dataType: 'json'
+                    }).then(function (info) {
+                        var lines = info.lines || [];
+                        if (lines.length === 0) {
+                            output.textContent = '';
+                            status.textContent = info.enabled
+                                ? 'Logging is on but nothing has been recorded yet. Open a series in the app, then press Show log again.'
+                                : 'Logging is off. Tick "Write a marker debug log", save, then reproduce the problem.';
+                            return;
+                        }
+
+                        output.textContent = lines.join('\n');
+                        output.scrollTop = output.scrollHeight;
+                        status.textContent = lines.length + ' lines from ' + info.path;
+                    }, function () {
+                        status.textContent = 'Could not read the marker log.';
+                    });
+                }
+
+                function clearAnimeMarkerLog() {
+                    var status = document.querySelector('#AnimeMarkerLogStatus');
+                    var output = document.querySelector('#AnimeMarkerLogOutput');
+                    if (!status) return;
+
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Moonfin/AnimeMarkers/ClearLog'),
+                        dataType: 'json'
+                    }).then(function () {
+                        if (output) output.textContent = '';
+                        status.textContent = 'Log cleared. Reproduce the problem, then press Show log.';
+                    }, function () {
+                        status.textContent = 'Could not clear the marker log.';
+                    });
+                }
+
                 function clearAnimeMarkerCache() {
                     var status = document.querySelector('#AnimeMarkerDiagStatus');
                     if (!status) return;
@@ -6107,6 +6190,7 @@
                         config.AnimeMarkersEnabled = document.querySelector('#AnimeMarkersEnabled').checked;
                         config.AnimeMarkerRecapLookup = document.querySelector('#AnimeMarkerRecapLookup').checked;
                         config.AnimeMarkerMaxAgeDays = parseInt(document.querySelector('#AnimeMarkerMaxAgeDays').value, 10) || 30;
+                        config.AnimeMarkerVerboseLogging = document.querySelector('#AnimeMarkerVerboseLogging').checked;
                         config.AnimeMarkerLibraryIds = Array.prototype.slice.call(
                             document.querySelectorAll('.animeMarkerLibraryCb:checked')
                         ).map(function (cb) { return cb.getAttribute('data-id'); });

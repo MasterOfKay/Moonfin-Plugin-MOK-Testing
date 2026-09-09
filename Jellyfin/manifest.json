@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.2.0",
+        "changelog": "Adds a marker debug log for working out why a badge is not apppearing.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.2/Moonfin.Server-2.2.2.0.zip",
+        "checksum": "7038661366E4439C68783FA7430F1BFE",
+        "timestamp": "2026-09-09T00:00:46",
+        "dependencies": []
+      },
+      {
         "version": "2.2.1.0",
         "changelog": "Anime filler and recap markers. Episodes are classified as manga canon, anime canon, mixed or filler using AnimeFillerList, with recap flags from MyAnimeList. Enable it under Anime Filler & Recap Markers in the plugin settings, then run the Moonfin Anime Markers Sync task. The settings page has a per-series preview for checking the result.",
         "targetAbi": "10.10.0.0",

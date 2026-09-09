@@ -28,6 +28,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<ImdbListsCacheService>();
         serviceCollection.AddSingleton<StudioLogoCacheService>();
         serviceCollection.AddSingleton<StudioLogoFetchService>();
+        serviceCollection.AddSingleton<AnimeMarkerDiagnosticLog>();
         serviceCollection.AddSingleton<AnimeFillerListClient>();
         serviceCollection.AddSingleton<AnimeMarkerCacheService>();
         serviceCollection.AddSingleton<AnimeRecapFetchService>();
