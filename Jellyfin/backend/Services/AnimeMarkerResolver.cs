@@ -134,7 +134,15 @@ public class AnimeMarkerResolver
     /// majority of a general library.
     /// </summary>
     public AnimeFillerShow? MatchSeries(Series series) =>
-        AnimeTitleMatcher.Match(_client.Index, series.Name, series.OriginalTitle);
+        AnimeTitleMatcher.Match(_client.Index, WithProductionYear(series), series.Name, series.OriginalTitle);
+
+    /// <summary>
+    /// The series' name with its production year appended, when it has one.
+    /// </summary>
+    private static string? WithProductionYear(Series series) =>
+        series.ProductionYear is { } year && !string.IsNullOrWhiteSpace(series.Name)
+            ? $"{series.Name} ({year.ToString(System.Globalization.CultureInfo.InvariantCulture)})"
+            : null;
 
     /// <summary>
     /// Every series that matches a show on the site, paired with the show. Used both by the
@@ -228,23 +236,41 @@ public class AnimeMarkerResolver
         }).Items.OfType<Episode>()
             // Season 0 is specials, which the site does not list alongside the main run.
             .Where(episode => episode.ParentIndexNumber is > 0 && episode.IndexNumber is > 0)
+            // A recursive query under a series matches each episode once per ancestor it
+            // has, so an episode inside a season comes back twice. Left in, that doubles
+            // the episode count and makes a genuinely absolute-numbered library look like
+            // it repeats its index numbers, which picks the wrong numbering scheme.
+            .GroupBy(episode => episode.Id)
+            .Select(group => group.First())
             .OrderBy(episode => episode.ParentIndexNumber!.Value)
             .ThenBy(episode => episode.IndexNumber!.Value)
             .ToList();
 
-        var pairs = episodes
-            .Select(episode => (episode.ParentIndexNumber!.Value, episode.IndexNumber!.Value))
+        // Two library items can still legitimately share one season/episode slot, such as a
+        // second cut of the same episode. They are one episode as far as the site is
+        // concerned, so the numbering is worked out over the distinct slots and every item
+        // in a slot then takes that slot's number.
+        var slots = episodes
+            .Select(episode => (Season: episode.ParentIndexNumber!.Value, Index: episode.IndexNumber!.Value))
+            .Distinct()
+            .OrderBy(slot => slot.Season)
+            .ThenBy(slot => slot.Index)
             .ToList();
 
-        var numbers = AssignAbsoluteNumbers(pairs);
-        var numbered = new List<NumberedEpisode>(episodes.Count);
-
-        for (var i = 0; i < episodes.Count; i++)
+        var numbers = AssignAbsoluteNumbers(slots);
+        var absoluteBySlot = new Dictionary<(int Season, int Index), int>();
+        for (var i = 0; i < slots.Count; i++)
         {
-            numbered.Add(new NumberedEpisode(episodes[i], numbers[i]));
+            absoluteBySlot[slots[i]] = numbers[i];
         }
 
-        return new SeriesNumbering(IsAlreadyAbsolute(pairs) ? "absolute" : "per-season", numbered);
+        var numbered = episodes
+            .Select(episode => new NumberedEpisode(
+                episode,
+                absoluteBySlot[(episode.ParentIndexNumber!.Value, episode.IndexNumber!.Value)]))
+            .ToList();
+
+        return new SeriesNumbering(IsAlreadyAbsolute(slots) ? "absolute" : "per-season", numbered);
     }
 
     /// <summary>

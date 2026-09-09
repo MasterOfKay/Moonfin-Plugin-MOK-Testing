@@ -19,6 +19,7 @@ public class AnimeMarkersController : ControllerBase
     private readonly AnimeFillerListClient _client;
     private readonly AnimeMarkerResolver _resolver;
     private readonly AnimeMarkerCacheService _cache;
+    private readonly AnimeMarkerDiagnosticLog _diagnostics;
     private readonly ILogger<AnimeMarkersController> _logger;
 
     public AnimeMarkersController(
@@ -26,12 +27,14 @@ public class AnimeMarkersController : ControllerBase
         AnimeFillerListClient client,
         AnimeMarkerResolver resolver,
         AnimeMarkerCacheService cache,
+        AnimeMarkerDiagnosticLog diagnostics,
         ILogger<AnimeMarkersController> logger)
     {
         _libraryManager = libraryManager;
         _client = client;
         _resolver = resolver;
         _cache = cache;
+        _diagnostics = diagnostics;
         _logger = logger;
     }
 
@@ -57,18 +60,23 @@ public class AnimeMarkersController : ControllerBase
         [FromQuery] string seriesId,
         CancellationToken cancellationToken = default)
     {
+        _diagnostics.Write($"request  seriesId={seriesId} from={Request.Headers.UserAgent}");
+
         if (MoonfinPlugin.Instance?.Configuration?.AnimeMarkersEnabled != true)
         {
+            _diagnostics.Write("  -> answered enabled=false (the feature is off in settings)");
             return Ok(new { enabled = false, matched = false, episodes = new Dictionary<string, object>() });
         }
 
         if (string.IsNullOrWhiteSpace(seriesId) || !Guid.TryParse(seriesId, out var seriesGuid))
         {
+            _diagnostics.Write("  -> 400, the seriesId was missing or malformed");
             return BadRequest(new { error = "Missing or malformed seriesId" });
         }
 
         if (_libraryManager.GetItemById(seriesGuid) is not Series series)
         {
+            _diagnostics.Write("  -> 404, no series in the library has that id");
             return NotFound(new { error = "Series not found" });
         }
 
@@ -76,6 +84,21 @@ public class AnimeMarkersController : ControllerBase
         await _client.EnsureCatalogAsync(cancellationToken).ConfigureAwait(false);
 
         var result = _resolver.GetMarkersForSeries(series, CacheMaxAge);
+
+        if (_diagnostics is { } log && AnimeMarkerDiagnosticLog.Enabled)
+        {
+            log.Write(
+                $"  series=\"{series.Name}\" matched={result.Slug ?? "(nothing)"} " +
+                $"pending={result.Pending} markers={result.Episodes.Count} recapKnown={result.RecapKnown}");
+
+            // The episode ids are the join the client has to match on, so a couple are
+            // written out verbatim: a client that cannot find them is formatting ids
+            // differently, which looks identical to having no data at all.
+            foreach (var (episodeId, marker) in result.Episodes.Take(3))
+            {
+                log.Write($"    sample episodeId={episodeId} kind={marker.Kind} recap={marker.Recap}");
+            }
+        }
 
         return Ok(new
         {
@@ -305,6 +328,36 @@ public class AnimeMarkersController : ControllerBase
         await _cache.FlushAsync().ConfigureAwait(false);
 
         return Ok(new { matched = true, slug = show.Slug, fetched = true, episodes = episodes.Count });
+    }
+
+    /// <summary>
+    /// The tail of the dedicated marker log, so a reproduction can be read straight from
+    /// the admin page instead of hunting through the server log.
+    /// </summary>
+    [HttpGet("Log")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<object> GetLog([FromQuery] int lines = 200)
+    {
+        var clamped = Math.Clamp(lines, 1, 2000);
+
+        return Ok(new
+        {
+            enabled = AnimeMarkerDiagnosticLog.Enabled,
+            path = _diagnostics.Path_,
+            sizeBytes = _diagnostics.SizeBytes,
+            lines = _diagnostics.Tail(clamped)
+        });
+    }
+
+    /// <summary>Empties the marker log so a fresh reproduction starts clean.</summary>
+    [HttpPost("ClearLog")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<object>> ClearLog()
+    {
+        var cleared = await _diagnostics.ClearAsync().ConfigureAwait(false);
+        return Ok(new { cleared });
     }
 
     /// <summary>

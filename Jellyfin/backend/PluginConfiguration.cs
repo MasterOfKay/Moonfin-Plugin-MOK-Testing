@@ -122,6 +122,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public int AnimeMarkerMaxAgeDays { get; set; } = 30;
 
     /// <summary>
+    /// Enable verbose logging of every marker request a client makes and what it was answered with.
+    /// This is a debug feature to help work out why a badge is or is not appearing.
+    /// </summary>
+    public bool AnimeMarkerVerboseLogging { get; set; }
+
+    /// <summary>
     /// Optional default server URL shown in the Moonfin web Add Server dialog.
     /// </summary>
     public string? WebDefaultServerUrl { get; set; }
