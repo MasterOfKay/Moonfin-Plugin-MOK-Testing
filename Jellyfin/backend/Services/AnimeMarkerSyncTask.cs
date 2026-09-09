@@ -254,13 +254,13 @@ public class AnimeMarkerSyncTask : IScheduledTask
                 continue;
             }
 
-            _diagnostics.Write($"recap {match.Show.Slug}: resolved to MAL {malId}, asking Jikan");
+            _diagnostics.Write($"recap {match.Show.Slug}: resolved to MAL {malId}, asking the episode API");
 
             var lookup = await _recapService.FetchRecapsAsync(malId.Value, cancellationToken).ConfigureAwait(false);
             if (lookup == null)
             {
                 _diagnostics.Write(
-                    $"recap {match.Show.Slug}: Jikan would not answer for MAL {malId} after retries, leaving it for the next run");
+                    $"recap {match.Show.Slug}: the episode API would not answer for MAL {malId} after retries, leaving it for the next run");
                 continue;
             }
 
