@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.8.0",
+        "changelog": "Better Pills, plus movie have dubbed/subbed toggles.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.8/Moonfin.Server-2.2.8.0.zip",
+        "checksum": "77FD3A5EDC9179B94181B2C4261A5B74",
+        "timestamp": "2026-09-09T17:11:33",
+        "dependencies": []
+      },
+      {
         "version": "2.2.7.0",
         "changelog": "Subed/dubed pills render fix, plus anime id verification fix.",
         "targetAbi": "10.10.0.0",

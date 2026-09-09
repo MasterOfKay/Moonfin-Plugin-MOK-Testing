@@ -134,6 +134,37 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool AnimeAudioMarkersEnabled { get; set; }
 
     /// <summary>
+    /// Extends the Subbed/Dubbed pills to movies, which have no series to hang off and so
+    /// are opted in separately. Uses the same libraries and the same audio rules.
+    /// </summary>
+    public bool AnimeAudioMarkersMovies { get; set; }
+
+    // ---------------------------------------------------------------------
+    // Which pills a client is allowed to draw
+    // ---------------------------------------------------------------------
+
+    /// <summary>Show a pill on episodes AnimeFillerList classes as filler.</summary>
+    public bool AnimeMarkerShowFiller { get; set; } = true;
+
+    /// <summary>Show a pill on episodes that mix source material with filler.</summary>
+    public bool AnimeMarkerShowMixed { get; set; } = true;
+
+    /// <summary>Show a pill on episodes MyAnimeList marks as recaps.</summary>
+    public bool AnimeMarkerShowRecap { get; set; } = true;
+
+    /// <summary>
+    /// Show a pill on episodes adapted from the manga. Off by default: this is the ordinary
+    /// case for most anime, so it puts a pill on nearly every episode.
+    /// </summary>
+    public bool AnimeMarkerShowMangaCanon { get; set; }
+
+    /// <summary>
+    /// Show a pill on episodes that are not in the manga but are part of the anime's own
+    /// continuity. Off by default for the same reason as manga canon.
+    /// </summary>
+    public bool AnimeMarkerShowAnimeCanon { get; set; }
+
+    /// <summary>
     /// Optional default server URL shown in the Moonfin web Add Server dialog.
     /// </summary>
     public string? WebDefaultServerUrl { get; set; }

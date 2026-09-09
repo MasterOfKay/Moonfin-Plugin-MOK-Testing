@@ -31,15 +31,18 @@ public class AnimeRecapFetchService
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AnimeIdMappingService _mapping;
+    private readonly AnimeMarkerDiagnosticLog _diagnostics;
     private readonly ILogger<AnimeRecapFetchService> _logger;
 
     public AnimeRecapFetchService(
         IHttpClientFactory httpClientFactory,
         AnimeIdMappingService mapping,
+        AnimeMarkerDiagnosticLog diagnostics,
         ILogger<AnimeRecapFetchService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _mapping = mapping;
+        _diagnostics = diagnostics;
         _logger = logger;
     }
 
@@ -228,6 +231,21 @@ public class AnimeRecapFetchService
             if (!response.IsSuccessStatusCode)
             {
                 var status = (int)response.StatusCode;
+                var body = string.Empty;
+                try
+                {
+                    body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    if (body.Length > 200)
+                    {
+                        body = body[..200];
+                    }
+                }
+                catch
+                {
+                    // The status alone still tells us something.
+                }
+
+                _diagnostics.Write($"    jikan MAL {malId} page {page} -> HTTP {status} {body}");
                 _logger.LogDebug(
                     "Recap lookup for MAL {MalId} page {Page} returned {Status}", malId, page, status);
 
@@ -242,6 +260,9 @@ public class AnimeRecapFetchService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogDebug(ex, "Recap lookup for MAL {MalId} page {Page} failed", malId, page);
+            _diagnostics.Write(
+                $"    jikan MAL {malId} page {page} -> {ex.GetType().Name}: {ex.Message}" +
+                (ex.InnerException != null ? $" ({ex.InnerException.GetType().Name}: {ex.InnerException.Message})" : string.Empty));
 
             // No response at all: a timeout or a dropped connection, both worth another go.
             return (null, true);
