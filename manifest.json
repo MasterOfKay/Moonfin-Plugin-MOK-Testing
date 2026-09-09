@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.3.0",
+        "changelog": "Fix logging.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.3/Moonfin.Server-2.2.3.0.zip",
+        "checksum": "5984AEA0AA2FF05AC8B461D8C73F25B7",
+        "timestamp": "2026-09-09T00:17:17",
+        "dependencies": []
+      },
+      {
         "version": "2.2.2.0",
         "changelog": "Adds a marker debug log for working out why a badge is not apppearing.",
         "targetAbi": "10.10.0.0",
