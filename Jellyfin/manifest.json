@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.7.0",
+        "changelog": "Subed/dubed pills render fix, plus anime id verification fix.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.7/Moonfin.Server-2.2.7.0.zip",
+        "checksum": "159386A4820A0595857DDF03EB8E66B7",
+        "timestamp": "2026-09-09T14:37:20",
+        "dependencies": []
+      },
+      {
         "version": "2.2.6.0",
         "changelog": "Logs update to get evrything properly, and fixed bug where some items were not being processed correctly.",
         "targetAbi": "10.10.0.0",

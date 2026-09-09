@@ -248,8 +248,9 @@ public class AnimeMarkerSyncTask : IScheduledTask
             if (malId == null)
             {
                 _diagnostics.Write(
-                    $"recap {match.Show.Slug}: no MyAnimeList id could be resolved for \"{match.Series.Name}\", " +
-                    "so the series has no anime provider id and the AniList title search did not confirm a match");
+                    $"recap {match.Show.Slug}: no MyAnimeList id for \"{match.Series.Name}\" from its "
+                    + $"provider ids ({string.Join(", ", match.Series.ProviderIds.Select(pair => pair.Key + "=" + pair.Value))}), "
+                    + "the offline mapping table, or the AniList search");
                 continue;
             }
 

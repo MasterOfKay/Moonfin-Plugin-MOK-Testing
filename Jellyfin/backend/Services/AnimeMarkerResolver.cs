@@ -13,17 +13,20 @@ namespace Moonfin.Server.Services;
 public class AnimeMarkerResolver
 {
     private readonly ILibraryManager _libraryManager;
+    private readonly IMediaSourceManager? _mediaSourceManager;
     private readonly AnimeFillerListClient _client;
     private readonly AnimeMarkerCacheService _cache;
     private readonly ILogger<AnimeMarkerResolver> _logger;
 
     public AnimeMarkerResolver(
         ILibraryManager libraryManager,
+        IMediaSourceManager mediaSourceManager,
         AnimeFillerListClient client,
         AnimeMarkerCacheService cache,
         ILogger<AnimeMarkerResolver> logger)
     {
         _libraryManager = libraryManager;
+        _mediaSourceManager = mediaSourceManager;
         _client = client;
         _cache = cache;
         _logger = logger;
@@ -296,9 +299,7 @@ public class AnimeMarkerResolver
             try
             {
                 kind = AnimeAudioClassifier.Classify(
-                    episode.GetMediaStreams()
-                        .Where(stream => stream.Type == MediaStreamType.Audio)
-                        .Select(stream => stream.Language));
+                    AnimeMediaStreamReader.GetAudioLanguages(_mediaSourceManager, episode));
             }
             catch (Exception ex)
             {
