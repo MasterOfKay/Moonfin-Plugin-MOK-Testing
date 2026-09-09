@@ -30,11 +30,16 @@ public class AnimeRecapFetchService
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly AnimeIdMappingService _mapping;
     private readonly ILogger<AnimeRecapFetchService> _logger;
 
-    public AnimeRecapFetchService(IHttpClientFactory httpClientFactory, ILogger<AnimeRecapFetchService> logger)
+    public AnimeRecapFetchService(
+        IHttpClientFactory httpClientFactory,
+        AnimeIdMappingService mapping,
+        ILogger<AnimeRecapFetchService> logger)
     {
         _httpClientFactory = httpClientFactory;
+        _mapping = mapping;
         _logger = logger;
     }
 
@@ -49,15 +54,25 @@ public class AnimeRecapFetchService
             return malId;
         }
 
-        if (TryGetProviderInt(series, out var anilistId, "AniList", "Anilist"))
+        // The mapping service caches the AniList->MyAnimeList mapping table, so it is used first to avoid a network request.
+        await _mapping.EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+
+        var mapped = _mapping.Resolve(series);
+        if (mapped != null)
         {
-            return await ResolveViaAniListAsync(anilistId, cancellationToken).ConfigureAwait(false);
+            return mapped;
         }
 
-        // AniList search is fuzzy and will happily return its closest guess, so the answer is only
-        // accepted when one of the titles it comes back with actually matches the series after
-        // normalisation. A wrong id here would put confident recap flags on the wrong episodes,
-        // which is worse than having none.
+        if (TryGetProviderInt(series, out var anilistId, "AniList", "Anilist"))
+        {
+            var viaAniList = await ResolveViaAniListAsync(anilistId, cancellationToken).ConfigureAwait(false);
+            if (viaAniList != null)
+            {
+                return viaAniList;
+            }
+        }
+
+        // Last resort and the least reliable of the three, since the search is fuzzy.
         return await ResolveByTitleAsync(series.Name, cancellationToken).ConfigureAwait(false);
     }
 
