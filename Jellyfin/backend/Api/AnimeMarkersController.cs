@@ -321,37 +321,65 @@ public class AnimeMarkersController : ControllerBase
         var moviesEnabled = configuration.AnimeAudioMarkersMovies;
         var answer = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
+        // The client can call this endpoint on every episode list render, so it is not an error
+        var notFound = 0;
+        var moviesSkipped = 0;
+        var notCandidate = 0;
+        var noAudioTags = 0;
+        var seriesOrFolder = 0;
+
         foreach (var raw in requested)
         {
             if (!Guid.TryParse(raw, out var itemGuid))
             {
+                notFound++;
                 continue;
             }
 
             var item = _libraryManager.GetItemById(itemGuid);
             if (item == null)
             {
+                notFound++;
                 continue;
             }
 
+            // A series or a folder owns no file of its own, so it has no audio to read. Its
+            // episodes and seasons are answered through the Series endpoint instead.
+            if (item is Series || item is MediaBrowser.Controller.Entities.Folder)
+            {
+                seriesOrFolder++;
+                continue;
+            }
+
+            // Movies are opted in separately, because they are where a mixed library is most
+            // likely to put a pill on something that is not anime.
             if (item is MediaBrowser.Controller.Entities.Movies.Movie && !moviesEnabled)
             {
+                moviesSkipped++;
                 continue;
             }
 
             if (!_resolver.IsAudioMarkerCandidateItem(item))
             {
+                notCandidate++;
                 continue;
             }
 
             var audio = _resolver.GetAudioForItem(item);
-            if (audio != null)
+            if (audio == null)
             {
-                answer[item.Id.ToString("N")] = new { audio };
+                noAudioTags++;
+                continue;
             }
+
+            answer[item.Id.ToString("N")] = new { audio };
         }
 
-        _diagnostics.Write($"items  asked about {requested.Count} ids, answered {answer.Count}");
+        _diagnostics.Write(
+            $"items  asked about {requested.Count}, answered {answer.Count} " +
+            $"(skipped: {seriesOrFolder} series/folders, {moviesSkipped} movies with the movie option off, " +
+            $"{notCandidate} outside the chosen libraries or not anime, {noAudioTags} with no audio language tags, " +
+            $"{notFound} unknown ids)");
 
         return Ok(new { enabled = true, items = answer });
     }

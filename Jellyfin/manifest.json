@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.3.2.0",
+        "changelog": "Movie pill fix.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.3.2/Moonfin.Server-2.3.2.0.zip",
+        "checksum": "C310E5AE7E7E98295C9E29621E005654",
+        "timestamp": "2026-09-09T19:31:39",
+        "dependencies": []
+      },
+      {
         "version": "2.3.0.0",
         "changelog": "Jikan api is soon gone so we are switching to Tenrai.",
         "targetAbi": "10.10.0.0",
