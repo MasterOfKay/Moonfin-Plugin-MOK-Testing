@@ -54,7 +54,82 @@ public class AnimeRecapFetchService
             return await ResolveViaAniListAsync(anilistId, cancellationToken).ConfigureAwait(false);
         }
 
-        return null;
+        // AniList search is fuzzy and will happily return its closest guess, so the answer is only
+        // accepted when one of the titles it comes back with actually matches the series after
+        // normalisation. A wrong id here would put confident recap flags on the wrong episodes,
+        // which is worse than having none.
+        return await ResolveByTitleAsync(series.Name, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Resolves a series by its title using AniList's search API. 
+    /// Returns null when the lookup failed, so the caller leaves the cached show alone 
+    /// instead of recording an empty answer.
+    /// </summary>
+    private async Task<int?> ResolveByTitleAsync(string? title, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Moonfin/1.0");
+
+            var body = JsonSerializer.Serialize(new
+            {
+                query = "query($search:String){Media(search:$search,type:ANIME){idMal title{romaji english native}}}",
+                variables = new { search = title }
+            });
+
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+            using var response = await client.PostAsync(AniListEndpoint, content, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(json);
+
+            if (!document.RootElement.TryGetProperty("data", out var data) ||
+                !data.TryGetProperty("Media", out var media) ||
+                media.ValueKind != JsonValueKind.Object ||
+                !media.TryGetProperty("idMal", out var idMal) ||
+                idMal.ValueKind != JsonValueKind.Number ||
+                !idMal.TryGetInt32(out var malId))
+            {
+                return null;
+            }
+
+            var wanted = AnimeTitleMatcher.Normalize(title);
+            if (wanted.Length == 0 || !media.TryGetProperty("title", out var titles))
+            {
+                return null;
+            }
+
+            foreach (var field in new[] { "romaji", "english", "native" })
+            {
+                if (titles.TryGetProperty(field, out var value) &&
+                    value.ValueKind == JsonValueKind.String &&
+                    AnimeTitleMatcher.Normalize(value.GetString()) == wanted)
+                {
+                    return malId;
+                }
+            }
+
+            _logger.LogDebug(
+                "Recap lookup: the AniList search for {Title} came back as a different show, ignoring it", title);
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "AniList title search failed for {Title}", title);
+            return null;
+        }
     }
 
     /// <summary>
@@ -96,7 +171,32 @@ public class AnimeRecapFetchService
         return new RecapLookup(recaps, episodeCount);
     }
 
+    private const int MaxAttemptsPerPage = 3;
+
     private async Task<JikanEpisodesResponse?> GetEpisodePageAsync(int malId, int page, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= MaxAttemptsPerPage; attempt++)
+        {
+            var (result, retryable) = await TryGetEpisodePageAsync(malId, page, cancellationToken).ConfigureAwait(false);
+            if (result != null || !retryable)
+            {
+                return result;
+            }
+
+            if (attempt < MaxAttemptsPerPage)
+            {
+                _logger.LogDebug(
+                    "Recap lookup for MAL {MalId} page {Page} failed on attempt {Attempt}, retrying",
+                    malId, page, attempt);
+                await Task.Delay(TimeSpan.FromSeconds(3 * attempt), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<(JikanEpisodesResponse? Page, bool Retryable)> TryGetEpisodePageAsync(
+        int malId, int page, CancellationToken cancellationToken)
     {
         await WaitForSlotAsync(cancellationToken).ConfigureAwait(false);
 
@@ -112,18 +212,24 @@ public class AnimeRecapFetchService
             using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
+                var status = (int)response.StatusCode;
                 _logger.LogDebug(
-                    "Recap lookup for MAL {MalId} page {Page} returned {Status}", malId, page, (int)response.StatusCode);
-                return null;
+                    "Recap lookup for MAL {MalId} page {Page} returned {Status}", malId, page, status);
+
+                // 5xx and 429 are Jikan or MyAnimeList being briefly unavailable. A 404 is a
+                // that the entry does not exist, and must not be retried.
+                return (null, status >= 500 || status == 429);
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<JikanEpisodesResponse>(json, JsonOptions);
+            return (JsonSerializer.Deserialize<JikanEpisodesResponse>(json, JsonOptions), false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogDebug(ex, "Recap lookup for MAL {MalId} page {Page} failed", malId, page);
-            return null;
+
+            // No response at all: a timeout or a dropped connection, both worth another go.
+            return (null, true);
         }
     }
 

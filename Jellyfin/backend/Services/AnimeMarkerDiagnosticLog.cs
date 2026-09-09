@@ -9,7 +9,10 @@ namespace Moonfin.Server.Services;
 /// </summary>
 public class AnimeMarkerDiagnosticLog
 {
-    private const string LogFileName = "anime_markers.log";
+    /// <summary>
+    /// The log file name, so the admin page can tell the user where to look.
+    /// </summary>
+    private const string LogFileName = "moonfin-anime-markers.log";
 
     /// <summary>
     /// The maximum size of the log file before it is rotated. The log is for debugging, 
@@ -24,7 +27,7 @@ public class AnimeMarkerDiagnosticLog
     public AnimeMarkerDiagnosticLog(ILogger<AnimeMarkerDiagnosticLog> logger)
     {
         _logger = logger;
-        _path = Path.Combine(MoonfinPlugin.ResolveDataFolderPath(), LogFileName);
+        _path = Path.Combine(MoonfinPlugin.ResolveLogFolderPath(), LogFileName);
     }
 
     public static bool Enabled =>

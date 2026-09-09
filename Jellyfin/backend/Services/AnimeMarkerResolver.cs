@@ -1,4 +1,5 @@
 using Jellyfin.Data.Enums;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -209,6 +210,122 @@ public class AnimeMarkerResolver
     }
 
     /// <summary>
+    /// True when the series is a candidate for audio markers, either because it is in a
+    /// selected library or because it looks like anime. The latter is a best-effort guess
+    /// based on the ids the anime metadata plugins write and on an explicit genre or tag.
+    /// </summary>
+    public bool IsAudioMarkerCandidate(Series series) =>
+        GetSelectedLibraryFolderIds() != null || LooksLikeAnime(series);
+
+    private static readonly string[] AnimeProviderKeys =
+    {
+        "AniList", "AniDB", "AniDb", "Anidb", "AniSearch", "Kitsu", "KitsuIo", "MyAnimeList", "Mal"
+    };
+
+    /// <summary>
+    /// True when the series looks like anime, based on its provider ids, genres, or tags.
+    /// </summary>
+    public static bool LooksLikeAnime(BaseItem series)
+    {
+        foreach (var key in AnimeProviderKeys)
+        {
+            foreach (var providerKey in series.ProviderIds.Keys)
+            {
+                if (string.Equals(providerKey, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        foreach (var genre in series.Genres)
+        {
+            if (genre.Contains("anime", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        foreach (var tag in series.Tags)
+        {
+            if (tag.Contains("anime", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Builds the subbed/dubbed verdicts for a series' episodes and seasons, based on the
+    /// languages of the audio tracks in each file. Returns an empty result when the series
+    /// has no episodes or none of them have audio streams.
+    /// </summary>
+    public AudioMarkerResult BuildAudioMarkers(Series series)
+    {
+        var result = new AudioMarkerResult();
+
+        var episodes = _libraryManager.GetItemsResult(new InternalItemsQuery
+        {
+            IncludeItemTypes = [BaseItemKind.Episode],
+            ParentId = series.Id,
+            IsVirtualItem = false,
+            Recursive = true
+        }).Items.OfType<Episode>()
+            .GroupBy(episode => episode.Id)
+            .Select(group => group.First())
+            .ToList();
+
+        var bySeason = new Dictionary<Guid, List<AnimeAudioKind?>>();
+
+        foreach (var episode in episodes)
+        {
+            AnimeAudioKind? kind;
+            try
+            {
+                kind = AnimeAudioClassifier.Classify(
+                    episode.GetMediaStreams()
+                        .Where(stream => stream.Type == MediaStreamType.Audio)
+                        .Select(stream => stream.Language));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Anime markers: audio streams unreadable for {Episode}", episode.Id);
+                kind = null;
+            }
+
+            if (kind != null)
+            {
+                result.Episodes[episode.Id.ToString("N")] = kind.Value;
+            }
+
+            var seasonId = episode.SeasonId;
+            if (!seasonId.Equals(default))
+            {
+                if (!bySeason.TryGetValue(seasonId, out var kinds))
+                {
+                    kinds = new List<AnimeAudioKind?>();
+                    bySeason[seasonId] = kinds;
+                }
+
+                kinds.Add(kind);
+            }
+        }
+
+        foreach (var (seasonId, kinds) in bySeason)
+        {
+            var seasonKind = AnimeAudioClassifier.ClassifySeason(kinds);
+            if (seasonKind != null)
+            {
+                result.Seasons[seasonId.ToString("N")] = seasonKind.Value;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Returns the cached entry for a series' matched show, or null when the series 
     /// does not match a show or the table has not been fetched yet. 
     /// The entry is considered stale if it is older than the specified age.
@@ -333,6 +450,17 @@ public class AnimeMarkerResolver
 
         return numbers;
     }
+}
+
+/// <summary>
+/// Subbed/dubbed verdicts for one series, keyed by Jellyfin id in "N" form. A season
+/// appears only when every episode in it agreed.
+/// </summary>
+public class AudioMarkerResult
+{
+    public Dictionary<string, AnimeAudioKind> Episodes { get; } = new();
+
+    public Dictionary<string, AnimeAudioKind> Seasons { get; } = new();
 }
 
 /// <summary>One library series and the AnimeFillerList show it matched.</summary>
