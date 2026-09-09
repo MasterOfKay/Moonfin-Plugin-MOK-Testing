@@ -36,6 +36,7 @@ public class AnimeMarkerSyncTask : IScheduledTask
     private readonly AnimeMarkerResolver _resolver;
     private readonly AnimeMarkerCacheService _cache;
     private readonly AnimeRecapFetchService _recapService;
+    private readonly AnimeMarkerDiagnosticLog _diagnostics;
     private readonly ILogger<AnimeMarkerSyncTask> _logger;
 
     public AnimeMarkerSyncTask(
@@ -43,12 +44,14 @@ public class AnimeMarkerSyncTask : IScheduledTask
         AnimeMarkerResolver resolver,
         AnimeMarkerCacheService cache,
         AnimeRecapFetchService recapService,
+        AnimeMarkerDiagnosticLog diagnostics,
         ILogger<AnimeMarkerSyncTask> logger)
     {
         _client = client;
         _resolver = resolver;
         _cache = cache;
         _recapService = recapService;
+        _diagnostics = diagnostics;
         _logger = logger;
     }
 
@@ -83,6 +86,10 @@ public class AnimeMarkerSyncTask : IScheduledTask
             "Anime markers sync: {Series} series matched {Shows} shows on AnimeFillerList",
             matches.Count, showsBySlug.Count);
 
+        _diagnostics.Write(
+            $"sync  run started: {matches.Count} series matched {showsBySlug.Count} shows, " +
+            $"recapLookup={configuration.AnimeMarkerRecapLookup}");
+
         var maxAge = TimeSpan.FromDays(Math.Max(1, configuration.AnimeMarkerMaxAgeDays));
         var fresh = _cache.GetFreshSlugs(maxAge);
         var pending = showsBySlug.Keys.Where(slug => !fresh.Contains(slug)).ToList();
@@ -104,6 +111,10 @@ public class AnimeMarkerSyncTask : IScheduledTask
         if (configuration.AnimeMarkerRecapLookup)
         {
             await FetchRecapsAsync(matches, clock, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            _diagnostics.Write("recap pass skipped: the recap lookup is switched off in settings");
         }
 
         await _cache.FlushAsync().ConfigureAwait(false);
@@ -145,6 +156,11 @@ public class AnimeMarkerSyncTask : IScheduledTask
 
             var episodes = await _client.FetchEpisodesAsync(slug, cancellationToken).ConfigureAwait(false);
             processed++;
+
+            _diagnostics.Write(
+                episodes == null
+                    ? $"sync  fetch {slug} -> the page could not be read"
+                    : $"sync  fetch {slug} -> {episodes.Count} episodes");
 
             progress.Report(5 + ((double)processed / pending.Count * 75));
 
@@ -216,22 +232,40 @@ public class AnimeMarkerSyncTask : IScheduledTask
             }
 
             var entry = _cache.TryGetAny(match.Show.Slug);
-            if (entry == null || entry.RecapMalId != null)
+            if (entry == null)
             {
+                _diagnostics.Write($"recap {match.Show.Slug}: skipped, the show has no cached table yet");
+                continue;
+            }
+
+            if (entry.RecapMalId != null)
+            {
+                _diagnostics.Write($"recap {match.Show.Slug}: already done from MAL {entry.RecapMalId}");
                 continue;
             }
 
             var malId = await _recapService.TryResolveMalIdAsync(match.Series, cancellationToken).ConfigureAwait(false);
             if (malId == null)
             {
+                _diagnostics.Write(
+                    $"recap {match.Show.Slug}: no MyAnimeList id could be resolved for \"{match.Series.Name}\", " +
+                    "so the series has no anime provider id and the AniList title search did not confirm a match");
                 continue;
             }
+
+            _diagnostics.Write($"recap {match.Show.Slug}: resolved to MAL {malId}, asking Jikan");
 
             var lookup = await _recapService.FetchRecapsAsync(malId.Value, cancellationToken).ConfigureAwait(false);
             if (lookup == null)
             {
+                _diagnostics.Write(
+                    $"recap {match.Show.Slug}: Jikan would not answer for MAL {malId} after retries, leaving it for the next run");
                 continue;
             }
+
+            _diagnostics.Write(
+                $"recap {match.Show.Slug}: MAL {malId} covers {lookup.Value.EpisodeCount} episodes, " +
+                $"{lookup.Value.RecapNumbers.Count} of them recaps");
 
             foreach (var episode in entry.Episodes)
             {
