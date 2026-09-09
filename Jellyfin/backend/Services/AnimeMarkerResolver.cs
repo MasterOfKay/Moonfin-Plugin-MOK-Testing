@@ -213,6 +213,46 @@ public class AnimeMarkerResolver
     }
 
     /// <summary>
+    /// Get the audio kind for a given item.
+    /// </summary>
+    public AnimeAudioKind? GetAudioForItem(BaseItem item)
+    {
+        try
+        {
+            return AnimeAudioClassifier.Classify(
+                AnimeMediaStreamReader.GetAudioLanguages(_mediaSourceManager, item));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Anime markers: audio streams unreadable for {Item}", item.Id);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// True when the item is in a selected library or looks like anime, and so is a candidate
+    /// for audio markers. When no libraries are configured, the whole server is scanned.
+    /// </summary>
+    public bool IsAudioMarkerCandidateItem(BaseItem item)
+    {
+        var libraryIds = GetSelectedLibraryFolderIds();
+        if (libraryIds == null)
+        {
+            return LooksLikeAnime(item);
+        }
+
+        for (var parent = item.GetParent(); parent != null; parent = parent.GetParent())
+        {
+            if (libraryIds.Contains(parent.Id))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// True when the series is a candidate for audio markers, either because it is in a
     /// selected library or because it looks like anime. The latter is a best-effort guess
     /// based on the ids the anime metadata plugins write and on an explicit genre or tag.

@@ -38,6 +38,26 @@ public class AnimeMarkersController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Whether a marker kind is enabled in the plugin configuration.
+    /// </summary>
+    private static bool IsKindEnabled(AnimeEpisodeKind kind)
+    {
+        var configuration = MoonfinPlugin.Instance?.Configuration;
+
+        return kind switch
+        {
+            AnimeEpisodeKind.Filler => configuration?.AnimeMarkerShowFiller != false,
+            AnimeEpisodeKind.Mixed => configuration?.AnimeMarkerShowMixed != false,
+            AnimeEpisodeKind.MangaCanon => configuration?.AnimeMarkerShowMangaCanon == true,
+            AnimeEpisodeKind.AnimeCanon => configuration?.AnimeMarkerShowAnimeCanon == true,
+            _ => false
+        };
+    }
+
+    private static bool RecapEnabled =>
+        MoonfinPlugin.Instance?.Configuration?.AnimeMarkerShowRecap != false;
+
     private static TimeSpan CacheMaxAge =>
         TimeSpan.FromDays(Math.Max(1, MoonfinPlugin.Instance?.Configuration?.AnimeMarkerMaxAgeDays ?? 30));
 
@@ -174,11 +194,17 @@ public class AnimeMarkersController : ControllerBase
                         result.Episodes.TryGetValue(episodeId, out var marker);
                         var hasAudio = audio.Episodes.TryGetValue(episodeId, out var audioKind);
 
+                        var kind = marker != null && IsKindEnabled(marker.Kind)
+                            ? marker.Kind
+                            : (AnimeEpisodeKind?)null;
+
+                        var recap = marker?.Recap == true && RecapEnabled;
+
                         return new
                         {
-                            kind = marker?.Kind,
-                            filler = marker?.Kind == AnimeEpisodeKind.Filler,
-                            recap = marker?.Recap ?? false,
+                            kind,
+                            filler = kind == AnimeEpisodeKind.Filler,
+                            recap,
                             audio = hasAudio ? audioKind : (AnimeAudioKind?)null
                         };
                     },
@@ -263,6 +289,71 @@ public class AnimeMarkersController : ControllerBase
             unmatchedCount = unmatched.Count,
             unmatched = unmatched.Take(50).ToList()
         });
+    }
+
+    /// <summary>
+    /// Markers for the audio tracks of one or more items, 
+    /// including subbed/dubbed classification.
+    /// </summary>
+    [HttpGet("Items")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<object> GetItemMarkers([FromQuery] string ids)
+    {
+        var configuration = MoonfinPlugin.Instance?.Configuration;
+        if (configuration?.AnimeAudioMarkersEnabled != true)
+        {
+            return Ok(new { enabled = false, items = new Dictionary<string, object>() });
+        }
+
+        if (string.IsNullOrWhiteSpace(ids))
+        {
+            return BadRequest(new { error = "Missing ids" });
+        }
+
+        // Capped so one request cannot be turned into an unbounded amount of work.
+        var requested = ids
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(200)
+            .ToList();
+
+        var moviesEnabled = configuration.AnimeAudioMarkersMovies;
+        var answer = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var raw in requested)
+        {
+            if (!Guid.TryParse(raw, out var itemGuid))
+            {
+                continue;
+            }
+
+            var item = _libraryManager.GetItemById(itemGuid);
+            if (item == null)
+            {
+                continue;
+            }
+
+            if (item is MediaBrowser.Controller.Entities.Movies.Movie && !moviesEnabled)
+            {
+                continue;
+            }
+
+            if (!_resolver.IsAudioMarkerCandidateItem(item))
+            {
+                continue;
+            }
+
+            var audio = _resolver.GetAudioForItem(item);
+            if (audio != null)
+            {
+                answer[item.Id.ToString("N")] = new { audio };
+            }
+        }
+
+        _diagnostics.Write($"items  asked about {requested.Count} ids, answered {answer.Count}");
+
+        return Ok(new { enabled = true, items = answer });
     }
 
     /// <summary>
