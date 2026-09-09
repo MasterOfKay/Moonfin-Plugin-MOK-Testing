@@ -55,6 +55,24 @@ public class AnimeMarkersController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Applies the admin's dual-audio preference at the edge, so the classifier keeps
+    /// reporting what a file actually holds regardless of how it is labelled.
+    /// </summary>
+    private static AnimeAudioKind Present(AnimeAudioKind kind) =>
+        AnimeAudioClassifier.Collapse(
+            kind,
+            MoonfinPlugin.Instance?.Configuration?.AnimeAudioSeparateDualAudio == true);
+
+    /// <summary>
+    /// Where clients should draw the pills. Passed through rather than interpreted, so a
+    /// client that does not know a placement can fall back to its own default.
+    /// </summary>
+    private static string Placement =>
+        MoonfinPlugin.Instance?.Configuration?.AnimeMarkerPlacement is { Length: > 0 } value
+            ? value
+            : "below";
+
     private static bool RecapEnabled =>
         MoonfinPlugin.Instance?.Configuration?.AnimeMarkerShowRecap != false;
 
@@ -205,14 +223,16 @@ public class AnimeMarkersController : ControllerBase
                             kind,
                             filler = kind == AnimeEpisodeKind.Filler,
                             recap,
-                            audio = hasAudio ? audioKind : (AnimeAudioKind?)null
+                            audio = hasAudio ? Present(audioKind) : (AnimeAudioKind?)null
                         };
                     },
                     StringComparer.OrdinalIgnoreCase),
 
             seasons = audio.Seasons.ToDictionary(
                 pair => pair.Key,
-                pair => new { audio = pair.Value })
+                pair => new { audio = Present(pair.Value) }),
+
+            placement = Placement
         });
     }
 
@@ -372,7 +392,7 @@ public class AnimeMarkersController : ControllerBase
                 continue;
             }
 
-            answer[item.Id.ToString("N")] = new { audio };
+            answer[item.Id.ToString("N")] = new { audio = Present(audio.Value) };
         }
 
         _diagnostics.Write(
@@ -381,7 +401,7 @@ public class AnimeMarkersController : ControllerBase
             $"{notCandidate} outside the chosen libraries or not anime, {noAudioTags} with no audio language tags, " +
             $"{notFound} unknown ids)");
 
-        return Ok(new { enabled = true, items = answer });
+        return Ok(new { enabled = true, items = answer, placement = Placement });
     }
 
     /// <summary>

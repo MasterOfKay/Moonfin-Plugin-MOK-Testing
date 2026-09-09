@@ -12,7 +12,13 @@ public enum AnimeAudioKind
     Subbed,
 
     /// <summary>Carries an audio track in some other language.</summary>
-    Dubbed
+    Dubbed,
+
+    /// <summary>
+    /// Carries both Japanese and another language, so the viewer can choose. The caller
+    /// may fold this back to <see cref="Dubbed"/>.
+    /// </summary>
+    SubbedAndDubbed
 }
 
 /// <summary>
@@ -74,11 +80,21 @@ public static class AnimeAudioClassifier
 
         if (sawOther)
         {
-            return AnimeAudioKind.Dubbed;
+            return sawJapanese ? AnimeAudioKind.SubbedAndDubbed : AnimeAudioKind.Dubbed;
         }
 
         return sawJapanese ? AnimeAudioKind.Subbed : null;
     }
+
+    /// <summary>
+    /// Folds the dual-audio verdict back into <see cref="AnimeAudioKind.Dubbed"/> for admins
+    /// who would rather see one label. Applied at the edge, so the classifier itself always
+    /// reports what the file actually holds.
+    /// </summary>
+    public static AnimeAudioKind Collapse(AnimeAudioKind kind, bool separateDualAudio) =>
+        !separateDualAudio && kind == AnimeAudioKind.SubbedAndDubbed
+            ? AnimeAudioKind.Dubbed
+            : kind;
 
     /// <summary>
     /// Classifies a whole season from its episodes' verdicts.

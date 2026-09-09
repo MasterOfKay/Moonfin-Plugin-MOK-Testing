@@ -235,10 +235,15 @@ public class AnimeMarkerResolver
     /// </summary>
     public bool IsAudioMarkerCandidateItem(BaseItem item)
     {
+        if (!LooksLikeAnime(item))
+        {
+            return false;
+        }
+
         var libraryIds = GetSelectedLibraryFolderIds();
         if (libraryIds == null)
         {
-            return LooksLikeAnime(item);
+            return true;
         }
 
         try
@@ -274,8 +279,36 @@ public class AnimeMarkerResolver
     /// selected library or because it looks like anime. The latter is a best-effort guess
     /// based on the ids the anime metadata plugins write and on an explicit genre or tag.
     /// </summary>
-    public bool IsAudioMarkerCandidate(Series series) =>
-        GetSelectedLibraryFolderIds() != null || LooksLikeAnime(series);
+    public bool IsAudioMarkerCandidate(Series series)
+    {
+        if (!LooksLikeAnime(series))
+        {
+            return false;
+        }
+
+        var libraryIds = GetSelectedLibraryFolderIds();
+        if (libraryIds == null)
+        {
+            return true;
+        }
+
+        try
+        {
+            foreach (var folder in _libraryManager.GetCollectionFolders(series))
+            {
+                if (libraryIds.Contains(folder.Id))
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Anime markers: collection folders unreadable for {Item}", series.Id);
+        }
+
+        return false;
+    }
 
     private static readonly string[] AnimeProviderKeys =
     {
@@ -285,7 +318,23 @@ public class AnimeMarkerResolver
     /// <summary>
     /// True when the series looks like anime, based on its provider ids, genres, or tags.
     /// </summary>
-    public static bool LooksLikeAnime(BaseItem series)
+    public static bool LooksLikeAnime(BaseItem item)
+    {
+        // An episode carries almost no provider ids of its own; the anime ids live on the
+        // series. Checking the episode alone would call every anime episode "not anime".
+        if (item is Episode episode)
+        {
+            var parentSeries = episode.Series;
+            if (parentSeries != null && LooksLikeAnimeCore(parentSeries))
+            {
+                return true;
+            }
+        }
+
+        return LooksLikeAnimeCore(item);
+    }
+
+    private static bool LooksLikeAnimeCore(BaseItem series)
     {
         foreach (var key in AnimeProviderKeys)
         {
