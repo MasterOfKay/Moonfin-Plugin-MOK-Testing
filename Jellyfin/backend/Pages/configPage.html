@@ -5943,6 +5943,9 @@
                     status.innerHTML =
                         esc(info.series) + ' matched <strong>' + esc(info.title) + '</strong> (' + esc(info.slug) + ')<br>' +
                         'The site lists ' + info.showEpisodes + ' episodes; you have ' + info.libraryEpisodes +
+                        (info.libraryFiles > info.libraryEpisodes
+                            ? ' (' + info.libraryFiles + ' files, so some episodes have more than one copy)'
+                            : '') +
                         ', of which ' + info.markedEpisodes + ' got a marker (' + info.fillerEpisodes + ' filler).<br>' +
                         'Your library numbers this series <strong>' + esc(info.numbering) + '</strong>' +
                         (info.recapKnown ? ', and recap flags were looked up.' : ', and recap flags were not looked up.');

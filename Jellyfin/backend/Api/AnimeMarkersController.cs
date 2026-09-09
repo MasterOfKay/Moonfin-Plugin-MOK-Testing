@@ -220,9 +220,12 @@ public class AnimeMarkersController : ControllerBase
 
         await _client.EnsureCatalogAsync(cancellationToken).ConfigureAwait(false);
 
+        _diagnostics.Write($"preview  series=\"{series.Name}\" (from the admin page)");
+
         var show = _resolver.MatchSeries(series);
         if (show == null)
         {
+            _diagnostics.Write("  -> matched nothing on AnimeFillerList");
             return Ok(new
             {
                 series = series.Name,
@@ -248,21 +251,32 @@ public class AnimeMarkersController : ControllerBase
         var markersByNumber = entry.Episodes.ToDictionary(episode => episode.Number);
         var numbering = _resolver.BuildNumbering(series);
 
-        var rows = numbering.Episodes.Select(numbered =>
-        {
-            markersByNumber.TryGetValue(numbered.AbsoluteNumber, out var marker);
-
-            return new
+        // The episode list is flattened to one row per episode, so a client can render it without
+        // having to know how many files are in each episode. The client can still show the
+        // per-file badge if it wants, but the admin page is more interested in the episode
+        // list and the badge's presence there is what the user will notice first.
+        var rows = numbering.Episodes
+            .GroupBy(numbered => (numbered.Episode.ParentIndexNumber, numbered.Episode.IndexNumber))
+            .Select(group =>
             {
-                season = numbered.Episode.ParentIndexNumber,
-                index = numbered.Episode.IndexNumber,
-                absolute = numbered.AbsoluteNumber,
-                name = numbered.Episode.Name,
-                kind = marker?.Kind.ToString(),
-                recap = marker?.Recap ?? false,
-                marked = marker != null
-            };
-        }).ToList();
+                var numbered = group.First();
+                markersByNumber.TryGetValue(numbered.AbsoluteNumber, out var marker);
+
+                return new
+                {
+                    season = numbered.Episode.ParentIndexNumber,
+                    index = numbered.Episode.IndexNumber,
+                    absolute = numbered.AbsoluteNumber,
+                    name = numbered.Episode.Name,
+                    kind = marker?.Kind.ToString(),
+                    recap = marker?.Recap ?? false,
+                    marked = marker != null,
+                    copies = group.Count()
+                };
+            })
+            .OrderBy(row => row.season)
+            .ThenBy(row => row.index)
+            .ToList();
 
         return Ok(new
         {
@@ -275,6 +289,7 @@ public class AnimeMarkersController : ControllerBase
             numbering = numbering.Mode,
             showEpisodes = entry.Episodes.Count,
             libraryEpisodes = rows.Count,
+            libraryFiles = numbering.Episodes.Count,
             markedEpisodes = rows.Count(row => row.marked),
             fillerEpisodes = rows.Count(row => row.kind == nameof(AnimeEpisodeKind.Filler)),
             episodes = rows
