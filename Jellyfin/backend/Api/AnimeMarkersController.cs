@@ -62,10 +62,23 @@ public class AnimeMarkersController : ControllerBase
     {
         _diagnostics.Write($"request  seriesId={seriesId} from={Request.Headers.UserAgent}");
 
-        if (MoonfinPlugin.Instance?.Configuration?.AnimeMarkersEnabled != true)
+        var configuration = MoonfinPlugin.Instance?.Configuration;
+        var fillerEnabled = configuration?.AnimeMarkersEnabled == true;
+        var audioEnabled = configuration?.AnimeAudioMarkersEnabled == true;
+
+        // The client can call this endpoint on every episode list render, so it is not an error
+        // when the feature is off: the client simply renders nothing. The admin page can still
+        // call it to see what the feature would do if it were on, so the endpoint.
+        if (!fillerEnabled && !audioEnabled)
         {
-            _diagnostics.Write("  -> answered enabled=false (the feature is off in settings)");
-            return Ok(new { enabled = false, matched = false, episodes = new Dictionary<string, object>() });
+            _diagnostics.Write("  -> answered enabled=false (both marker features are off in settings)");
+            return Ok(new
+            {
+                enabled = false,
+                matched = false,
+                episodes = new Dictionary<string, object>(),
+                seasons = new Dictionary<string, object>()
+            });
         }
 
         if (string.IsNullOrWhiteSpace(seriesId) || !Guid.TryParse(seriesId, out var seriesGuid))
@@ -83,13 +96,20 @@ public class AnimeMarkersController : ControllerBase
         // Loads from disk on the first call after a restart.
         await _client.EnsureCatalogAsync(cancellationToken).ConfigureAwait(false);
 
-        var result = _resolver.GetMarkersForSeries(series, CacheMaxAge);
+        var result = fillerEnabled
+            ? _resolver.GetMarkersForSeries(series, CacheMaxAge)
+            : new SeriesMarkerResult();
+
+        var audio = audioEnabled && _resolver.IsAudioMarkerCandidate(series)
+            ? _resolver.BuildAudioMarkers(series)
+            : new AudioMarkerResult();
 
         if (_diagnostics is { } log && AnimeMarkerDiagnosticLog.Enabled)
         {
             log.Write(
                 $"  series=\"{series.Name}\" matched={result.Slug ?? "(nothing)"} " +
-                $"pending={result.Pending} markers={result.Episodes.Count} recapKnown={result.RecapKnown}");
+                $"pending={result.Pending} markers={result.Episodes.Count} recapKnown={result.RecapKnown} " +
+                $"audio={audio.Episodes.Count} audioSeasons={audio.Seasons.Count}");
 
             // The episode ids are the join the client has to match on, so a couple are
             // written out verbatim: a client that cannot find them is formatting ids
@@ -108,15 +128,33 @@ public class AnimeMarkersController : ControllerBase
             title = result.Title,
             pending = result.Pending,
             recapKnown = result.RecapKnown,
-            episodes = result.Episodes.ToDictionary(
-                pair => pair.Key,
-                pair => new
-                {
-                    kind = pair.Value.Kind,
 
-                    filler = pair.Value.Kind == AnimeEpisodeKind.Filler,
-                    recap = pair.Value.Recap
-                })
+            // The episode list is flattened to one row per episode, so a client can render it without
+            // having to know how many files are in each episode. The client can still show the
+            // per-file badge if it wants.
+            episodes = result.Episodes.Keys
+                .Concat(audio.Episodes.Keys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    episodeId => episodeId,
+                    episodeId =>
+                    {
+                        result.Episodes.TryGetValue(episodeId, out var marker);
+                        var hasAudio = audio.Episodes.TryGetValue(episodeId, out var audioKind);
+
+                        return new
+                        {
+                            kind = marker?.Kind,
+                            filler = marker?.Kind == AnimeEpisodeKind.Filler,
+                            recap = marker?.Recap ?? false,
+                            audio = hasAudio ? audioKind : (AnimeAudioKind?)null
+                        };
+                    },
+                    StringComparer.OrdinalIgnoreCase),
+
+            seasons = audio.Seasons.ToDictionary(
+                pair => pair.Key,
+                pair => new { audio = pair.Value })
         });
     }
 

@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.4.0",
+        "changelog": "Fixes.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.4/Moonfin.Server-2.2.4.0.zip",
+        "checksum": "8776DBB8B37003FC329B98143FC2D234",
+        "timestamp": "2026-09-09T12:35:08",
+        "dependencies": []
+      },
+      {
         "version": "2.2.3.0",
         "changelog": "Fix logging.",
         "targetAbi": "10.10.0.0",

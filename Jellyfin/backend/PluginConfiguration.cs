@@ -128,6 +128,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool AnimeMarkerVerboseLogging { get; set; }
 
     /// <summary>
+    /// Enable the "Audio Markers" feature, which shows a badge on episodes that have
+    /// multiple audio tracks (e.g., Japanese and English) so users can find them quickly.
+    /// </summary>
+    public bool AnimeAudioMarkersEnabled { get; set; }
+
+    /// <summary>
     /// Optional default server URL shown in the Moonfin web Add Server dialog.
     /// </summary>
     public string? WebDefaultServerUrl { get; set; }

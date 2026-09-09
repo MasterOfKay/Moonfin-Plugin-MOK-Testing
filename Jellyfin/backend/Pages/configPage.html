@@ -632,6 +632,20 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h3 class="sectionTitle">TMDB Integration</h3>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">Server-wide TMDB API Key</label>
+                            <input type="password" id="TmdbApiKey" is="emby-input" placeholder="Enter your TMDB API key or v4 token" />
+                            <div class="fieldDescription">
+                                Provide a server-wide <a href="https://www.themoviedb.org/settings/api" target="_blank">TMDB API key</a>
+                                that all users can use for episode ratings.
+                                Users who set their own key in their Moonfin client settings will use that instead.
+                                Supports both v3 API keys and v4 Bearer tokens.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h3 class="sectionTitle">Anime Filler &amp; Recap Markers</h3>
                         <div class="checkboxContainer">
                             <label>
@@ -661,6 +675,25 @@
                             <div class="fieldDescription">
                                 AnimeFillerList has no recap category, so this asks MyAnimeList as well. It is best-effort
                                 and additive: if that lookup fails, the filler data is unaffected.
+                            </div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeAudioMarkersEnabled" is="emby-checkbox" />
+                                <span>Also mark episodes and seasons as Subbed or Dubbed</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Reads the audio tracks in each file: Japanese and nothing else is <strong>Subbed</strong>,
+                                anything carrying another spoken language is <strong>Dubbed</strong>. A season gets a pill
+                                only when every episode in it agrees. This needs no internet and does not depend on
+                                AnimeFillerList, so it works for anime the site has never listed. Files whose audio has no
+                                language tag are left unmarked rather than guessed at.
+                                <br><br>
+                                <strong>In a mixed library:</strong> when you select your anime libraries above, only shows
+                                in them are marked. If you leave the selection empty the whole server is in scope, and a
+                                series is then only marked when it looks like anime on its own, meaning it carries an
+                                AniList, AniDB, AniSearch, Kitsu or MyAnimeList id, or an "Anime" genre or tag. A Japanese
+                                live-action show carrying one of those would still be marked.
                             </div>
                         </div>
                         <div class="inputContainer">
@@ -704,7 +737,8 @@
                             </label>
                             <div class="fieldDescription">
                                 Records every marker request a client makes and what it was answered with, to
-                                <code>anime_markers.log</code> beside the caches. Turn this on when a badge is not
+                                <code>moonfin-anime-markers.log</code> in the server's own log folder, so it also shows
+                                up under Dashboard &gt; Logs where it can be downloaded. Turn this on when a badge is not
                                 appearing: if a request never shows up here, the app never asked, which means the
                                 problem is in the app rather than on the server. Leave it off otherwise.
                             </div>
@@ -716,20 +750,6 @@
                             </div>
                             <div id="AnimeMarkerLogStatus" style="margin-top:8px;font-size:0.9em;color:rgba(255,255,255,0.7);"></div>
                             <pre id="AnimeMarkerLogOutput" style="margin-top:8px;max-height:320px;overflow:auto;font-size:0.8em;line-height:1.45;background:rgba(0,0,0,0.35);padding:8px;border-radius:4px;white-space:pre-wrap;word-break:break-word;"></pre>
-                        </div>
-                    </div>
-
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">TMDB Integration</h3>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">Server-wide TMDB API Key</label>
-                            <input type="password" id="TmdbApiKey" is="emby-input" placeholder="Enter your TMDB API key or v4 token" />
-                            <div class="fieldDescription">
-                                Provide a server-wide <a href="https://www.themoviedb.org/settings/api" target="_blank">TMDB API key</a>
-                                that all users can use for episode ratings.
-                                Users who set their own key in their Moonfin client settings will use that instead.
-                                Supports both v3 API keys and v4 Bearer tokens.
-                            </div>
                         </div>
                     </div>
 
@@ -5458,6 +5478,7 @@
                     document.querySelector('#StudioLogosMaxAgeDays').value = config.StudioLogosMaxAgeDays || 30;
                     document.querySelector('#AnimeMarkersEnabled').checked = config.AnimeMarkersEnabled === true;
                     document.querySelector('#AnimeMarkerRecapLookup').checked = config.AnimeMarkerRecapLookup !== false;
+                    document.querySelector('#AnimeAudioMarkersEnabled').checked = config.AnimeAudioMarkersEnabled === true;
                     document.querySelector('#AnimeMarkerMaxAgeDays').value = config.AnimeMarkerMaxAgeDays || 30;
                     document.querySelector('#AnimeMarkerVerboseLogging').checked = config.AnimeMarkerVerboseLogging === true;
                     loadLibraryPicker('#AnimeMarkerLibraryPicker', 'animeMarkerLibraryCb', config.AnimeMarkerLibraryIds || []);
@@ -6192,6 +6213,7 @@
                         config.StudioLogosMaxAgeDays = parseInt(document.querySelector('#StudioLogosMaxAgeDays').value, 10) || 30;
                         config.AnimeMarkersEnabled = document.querySelector('#AnimeMarkersEnabled').checked;
                         config.AnimeMarkerRecapLookup = document.querySelector('#AnimeMarkerRecapLookup').checked;
+                        config.AnimeAudioMarkersEnabled = document.querySelector('#AnimeAudioMarkersEnabled').checked;
                         config.AnimeMarkerMaxAgeDays = parseInt(document.querySelector('#AnimeMarkerMaxAgeDays').value, 10) || 30;
                         config.AnimeMarkerVerboseLogging = document.querySelector('#AnimeMarkerVerboseLogging').checked;
                         config.AnimeMarkerLibraryIds = Array.prototype.slice.call(
