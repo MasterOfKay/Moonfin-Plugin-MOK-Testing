@@ -707,6 +707,29 @@
                                 no series to inherit from, and a mixed library is most likely to mislabel a film.
                             </div>
                         </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeAudioSeparateDualAudio" is="emby-checkbox" />
+                                <span>Label dual-audio files as Subbed/Dubbed</span>
+                            </label>
+                            <div class="fieldDescription">
+                                A file holding the Japanese audio <em>and</em> a dub can be watched either way, so it
+                                shows as <strong>Subbed/Dubbed</strong> rather than just Dubbed. Leave off for the
+                                shorter label.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AnimeMarkerPlacement">Where to put the pills</label>
+                            <select is="emby-select" id="AnimeMarkerPlacement">
+                                <option value="below">Below the runtime</option>
+                                <option value="beside">Beside the runtime</option>
+                                <option value="thumbnail">On the episode thumbnail</option>
+                            </select>
+                            <div class="fieldDescription">
+                                Applies to episode rows in Moonfin clients. Season and movie cards always draw the pill
+                                over the artwork, since they have no runtime line to sit next to.
+                            </div>
+                        </div>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused">Which pills to show</label>
                             <div class="checkboxContainer">
@@ -5529,6 +5552,8 @@
                     document.querySelector('#AnimeMarkerRecapLookup').checked = config.AnimeMarkerRecapLookup !== false;
                     document.querySelector('#AnimeAudioMarkersEnabled').checked = config.AnimeAudioMarkersEnabled === true;
                     document.querySelector('#AnimeAudioMarkersMovies').checked = config.AnimeAudioMarkersMovies === true;
+                    document.querySelector('#AnimeAudioSeparateDualAudio').checked = config.AnimeAudioSeparateDualAudio === true;
+                    document.querySelector('#AnimeMarkerPlacement').value = config.AnimeMarkerPlacement || 'below';
                     document.querySelector('#AnimeMarkerShowFiller').checked = config.AnimeMarkerShowFiller !== false;
                     document.querySelector('#AnimeMarkerShowMixed').checked = config.AnimeMarkerShowMixed !== false;
                     document.querySelector('#AnimeMarkerShowRecap').checked = config.AnimeMarkerShowRecap !== false;
@@ -6270,6 +6295,8 @@
                         config.AnimeMarkerRecapLookup = document.querySelector('#AnimeMarkerRecapLookup').checked;
                         config.AnimeAudioMarkersEnabled = document.querySelector('#AnimeAudioMarkersEnabled').checked;
                         config.AnimeAudioMarkersMovies = document.querySelector('#AnimeAudioMarkersMovies').checked;
+                        config.AnimeAudioSeparateDualAudio = document.querySelector('#AnimeAudioSeparateDualAudio').checked;
+                        config.AnimeMarkerPlacement = document.querySelector('#AnimeMarkerPlacement').value || 'below';
                         config.AnimeMarkerShowFiller = document.querySelector('#AnimeMarkerShowFiller').checked;
                         config.AnimeMarkerShowMixed = document.querySelector('#AnimeMarkerShowMixed').checked;
                         config.AnimeMarkerShowRecap = document.querySelector('#AnimeMarkerShowRecap').checked;

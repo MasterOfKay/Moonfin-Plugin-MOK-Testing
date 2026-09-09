@@ -15,10 +15,32 @@ public class AnimeAudioClassifierTests
         Assert.Equal(AnimeAudioKind.Subbed, AnimeAudioClassifier.Classify(new[] { "jpn" }));
     }
 
+
     [Fact]
-    public void JapaneseAlongsideAnotherLanguageIsDubbed()
+    public void DualAudioIsReportedAsBoth()
     {
-        Assert.Equal(AnimeAudioKind.Dubbed, AnimeAudioClassifier.Classify(new[] { "jpn", "ger" }));
+        Assert.Equal(
+            AnimeAudioKind.SubbedAndDubbed,
+            AnimeAudioClassifier.Classify(new[] { "jpn", "ger" }));
+    }
+
+    [Fact]
+    public void DualAudioCollapsesToDubbedUnlessAskedFor()
+    {
+        Assert.Equal(
+            AnimeAudioKind.Dubbed,
+            AnimeAudioClassifier.Collapse(AnimeAudioKind.SubbedAndDubbed, separateDualAudio: false));
+
+        Assert.Equal(
+            AnimeAudioKind.SubbedAndDubbed,
+            AnimeAudioClassifier.Collapse(AnimeAudioKind.SubbedAndDubbed, separateDualAudio: true));
+    }
+
+    [Fact]
+    public void CollapsingLeavesTheOtherVerdictsAlone()
+    {
+        Assert.Equal(AnimeAudioKind.Subbed, AnimeAudioClassifier.Collapse(AnimeAudioKind.Subbed, false));
+        Assert.Equal(AnimeAudioKind.Dubbed, AnimeAudioClassifier.Collapse(AnimeAudioKind.Dubbed, false));
     }
 
     [Fact]

@@ -9,6 +9,15 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.3.3.0",
+        "changelog": "Subbed/dubbed only mark animes now and not on mixed libraries all. New UI option plus ghosts gabs removed.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.3.3/Moonfin.Server-2.3.3.0.zip",
+        "checksum": "7084D2E29465CBA66BD3F96BF87493DC",
+        "timestamp": "2026-09-09T21:00:52",
+        "dependencies": []
+      },
+      {
         "version": "2.3.2.0",
         "changelog": "Movie pill fix.",
         "targetAbi": "10.10.0.0",

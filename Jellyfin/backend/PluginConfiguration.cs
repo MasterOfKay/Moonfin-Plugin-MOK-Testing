@@ -139,6 +139,20 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool AnimeAudioMarkersMovies { get; set; }
 
+    /// <summary>
+    /// Reports a file holding both the Japanese audio and a dub as "Subbed/Dubbed" rather
+    /// than just "Dubbed", since the viewer can have it either way. Off by default, which
+    /// keeps the shorter label.
+    /// </summary>
+    public bool AnimeAudioSeparateDualAudio { get; set; }
+
+    /// <summary>
+    /// Where a client should draw the pills on an episode row: "below" under the runtime,
+    /// "beside" on the same line as it, or "thumbnail" over the episode image. Read by the
+    /// clients; the server only passes it along.
+    /// </summary>
+    public string AnimeMarkerPlacement { get; set; } = "below";
+
     // ---------------------------------------------------------------------
     // Which pills a client is allowed to draw
     // ---------------------------------------------------------------------
