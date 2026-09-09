@@ -241,6 +241,23 @@ public class AnimeMarkerResolver
             return LooksLikeAnime(item);
         }
 
+        try
+        {
+            foreach (var folder in _libraryManager.GetCollectionFolders(item))
+            {
+                if (libraryIds.Contains(folder.Id))
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Anime markers: collection folders unreadable for {Item}", item.Id);
+        }
+
+        // Kept as a second chance for anything the call above does not cover, such as an
+        // item reached through a nested folder rather than a library root.
         for (var parent = item.GetParent(); parent != null; parent = parent.GetParent())
         {
             if (libraryIds.Contains(parent.Id))
