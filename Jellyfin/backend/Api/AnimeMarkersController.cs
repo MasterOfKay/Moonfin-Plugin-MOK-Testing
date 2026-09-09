@@ -96,20 +96,52 @@ public class AnimeMarkersController : ControllerBase
         // Loads from disk on the first call after a restart.
         await _client.EnsureCatalogAsync(cancellationToken).ConfigureAwait(false);
 
-        var result = fillerEnabled
-            ? _resolver.GetMarkersForSeries(series, CacheMaxAge)
-            : new SeriesMarkerResult();
+        _diagnostics.Write(
+            $"  series=\"{series.Name}\" filler={fillerEnabled} audio={audioEnabled}");
 
-        var audio = audioEnabled && _resolver.IsAudioMarkerCandidate(series)
-            ? _resolver.BuildAudioMarkers(series)
-            : new AudioMarkerResult();
+        var result = new SeriesMarkerResult();
+        if (fillerEnabled)
+        {
+            try
+            {
+                result = _resolver.GetMarkersForSeries(series, CacheMaxAge);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Anime markers: filler lookup failed for {Series}", series.Name);
+                _diagnostics.Write($"  !! filler lookup threw: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        var audio = new AudioMarkerResult();
+        if (audioEnabled)
+        {
+            try
+            {
+                if (_resolver.IsAudioMarkerCandidate(series))
+                {
+                    var started = System.Diagnostics.Stopwatch.StartNew();
+                    audio = _resolver.BuildAudioMarkers(series);
+                    _diagnostics.Write($"  audio pass took {started.ElapsedMilliseconds} ms");
+                }
+                else
+                {
+                    _diagnostics.Write("  audio skipped: this series is not in a selected library and does not look like anime");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Anime markers: audio lookup failed for {Series}", series.Name);
+                _diagnostics.Write($"  !! audio lookup threw: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
 
         if (_diagnostics is { } log && AnimeMarkerDiagnosticLog.Enabled)
         {
             log.Write(
-                $"  series=\"{series.Name}\" matched={result.Slug ?? "(nothing)"} " +
-                $"pending={result.Pending} markers={result.Episodes.Count} recapKnown={result.RecapKnown} " +
-                $"audio={audio.Episodes.Count} audioSeasons={audio.Seasons.Count}");
+                $"  -> matched={result.Slug ?? "(nothing)"} pending={result.Pending} " +
+                $"markers={result.Episodes.Count} recapKnown={result.RecapKnown} " +
+                $"audioEpisodes={audio.Episodes.Count} audioSeasons={audio.Seasons.Count}");
 
             // The episode ids are the join the client has to match on, so a couple are
             // written out verbatim: a client that cannot find them is formatting ids

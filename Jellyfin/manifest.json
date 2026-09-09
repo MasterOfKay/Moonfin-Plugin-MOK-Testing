@@ -9,8 +9,17 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.2.6.0",
+        "changelog": "Logs update to get evrything properly, and fixed bug where some items were not being processed correctly.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.6/Moonfin.Server-2.2.6.0.zip",
+        "checksum": "C338BC63C96BB88D7C618F0549FFE076",
+        "timestamp": "2026-09-09T14:19:41",
+        "dependencies": []
+      },
+      {
         "version": "2.2.5.0",
-        "changelog": "Adds optional Subbed/Dubbed pills.",        
+        "changelog": "Adds optional Subbed/Dubbed pills.",
         "targetAbi": "10.10.0.0",
         "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.5/Moonfin.Server-2.2.5.0.zip",
         "checksum": "E23692F73A177144145DB0919735D026",

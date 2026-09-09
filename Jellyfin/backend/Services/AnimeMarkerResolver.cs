@@ -262,8 +262,19 @@ public class AnimeMarkerResolver
     /// languages of the audio tracks in each file. Returns an empty result when the series
     /// has no episodes or none of them have audio streams.
     /// </summary>
+    private static readonly TimeSpan AudioCacheTtl = TimeSpan.FromMinutes(10);
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, (DateTimeOffset At, AudioMarkerResult Result)>
+        AudioCache = new();
+
     public AudioMarkerResult BuildAudioMarkers(Series series)
     {
+        if (AudioCache.TryGetValue(series.Id, out var cached) &&
+            DateTimeOffset.UtcNow - cached.At < AudioCacheTtl)
+        {
+            return cached.Result;
+        }
+
         var result = new AudioMarkerResult();
 
         var episodes = _libraryManager.GetItemsResult(new InternalItemsQuery
@@ -319,6 +330,20 @@ public class AnimeMarkerResolver
             if (seasonKind != null)
             {
                 result.Seasons[seasonId.ToString("N")] = seasonKind.Value;
+            }
+        }
+
+        AudioCache[series.Id] = (DateTimeOffset.UtcNow, result);
+
+        // Bounded so a large library cannot grow this without limit.
+        if (AudioCache.Count > 200)
+        {
+            foreach (var stale in AudioCache
+                         .Where(pair => DateTimeOffset.UtcNow - pair.Value.At >= AudioCacheTtl)
+                         .Select(pair => pair.Key)
+                         .ToList())
+            {
+                AudioCache.TryRemove(stale, out _);
             }
         }
 
