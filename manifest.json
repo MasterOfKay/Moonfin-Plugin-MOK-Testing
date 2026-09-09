@@ -9,6 +9,24 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.3.0.0",
+        "changelog": "Jikan api is soon gone so we are switching to Tenrai.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.3.0/Moonfin.Server-2.3.0.0.zip",
+        "checksum": "8296730327786843A83A81D19AEC8107",
+        "timestamp": "2026-09-09T18:56:46",
+        "dependencies": []
+      },
+      {
+        "version": "2.2.9.0",
+        "changelog": "Fixed pills issues for movies.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.2.9/Moonfin.Server-2.2.9.0.zip",
+        "checksum": "06BA495D1BA9A0AA8B29A94F16068C7B",
+        "timestamp": "2026-09-09T18:52:28",
+        "dependencies": []
+      },
+      {
         "version": "2.2.8.0",
         "changelog": "Better Pills, plus movie have dubbed/subbed toggles.",
         "targetAbi": "10.10.0.0",
