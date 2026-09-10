@@ -235,17 +235,29 @@ public class AnimeMarkerResolver
     /// </summary>
     public bool IsAudioMarkerCandidateItem(BaseItem item)
     {
-        if (!LooksLikeAnime(item))
+        var libraryIds = GetSelectedLibraryFolderIds();
+
+        // No libraries chosen, all items are candidates.
+        if (libraryIds == null)
+        {
+            return LooksLikeAnime(item);
+        }
+
+        if (!IsInSelectedLibrary(item, libraryIds))
         {
             return false;
         }
 
-        var libraryIds = GetSelectedLibraryFolderIds();
-        if (libraryIds == null)
-        {
-            return true;
-        }
+        // Treats all items as Anime even if they don't have a match.
+        // Only for Anime only Libraries.
+        return TrustsSelectedLibraries || LooksLikeAnime(item);
+    }
 
+    private static bool TrustsSelectedLibraries =>
+        MoonfinPlugin.Instance?.Configuration?.AnimeAudioTrustSelectedLibraries == true;
+
+    private bool IsInSelectedLibrary(BaseItem item, HashSet<Guid> libraryIds)
+    {
         try
         {
             foreach (var folder in _libraryManager.GetCollectionFolders(item))
@@ -261,8 +273,6 @@ public class AnimeMarkerResolver
             _logger.LogDebug(ex, "Anime markers: collection folders unreadable for {Item}", item.Id);
         }
 
-        // Kept as a second chance for anything the call above does not cover, such as an
-        // item reached through a nested folder rather than a library root.
         for (var parent = item.GetParent(); parent != null; parent = parent.GetParent())
         {
             if (libraryIds.Contains(parent.Id))
@@ -279,36 +289,7 @@ public class AnimeMarkerResolver
     /// selected library or because it looks like anime. The latter is a best-effort guess
     /// based on the ids the anime metadata plugins write and on an explicit genre or tag.
     /// </summary>
-    public bool IsAudioMarkerCandidate(Series series)
-    {
-        if (!LooksLikeAnime(series))
-        {
-            return false;
-        }
-
-        var libraryIds = GetSelectedLibraryFolderIds();
-        if (libraryIds == null)
-        {
-            return true;
-        }
-
-        try
-        {
-            foreach (var folder in _libraryManager.GetCollectionFolders(series))
-            {
-                if (libraryIds.Contains(folder.Id))
-                {
-                    return true;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Anime markers: collection folders unreadable for {Item}", series.Id);
-        }
-
-        return false;
-    }
+    public bool IsAudioMarkerCandidate(Series series) => IsAudioMarkerCandidateItem(series);
 
     private static readonly string[] AnimeProviderKeys =
     {
