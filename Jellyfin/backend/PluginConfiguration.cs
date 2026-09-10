@@ -147,6 +147,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool AnimeAudioSeparateDualAudio { get; set; }
 
     /// <summary>
+    /// Treats every item in the selected libraries as anime, for libraries that hold nothing else.
+    /// </summary>
+    public bool AnimeAudioTrustSelectedLibraries { get; set; }
+
+    /// <summary>
     /// Where a client should draw the pills on an episode row: "below" under the runtime,
     /// "beside" on the same line as it, or "thumbnail" over the episode image. Read by the
     /// clients; the server only passes it along.

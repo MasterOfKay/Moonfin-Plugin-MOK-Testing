@@ -9,6 +9,24 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
+        "version": "2.3.5.0",
+        "changelog": "Option for dubbed/subbed to treat all as anime.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.3.5/Moonfin.Server-2.3.5.0.zip",
+        "checksum": "41D9507627E58756133D6C1C183C5A4B",
+        "timestamp": "2026-09-10T16:22:10",
+        "dependencies": []
+      },
+      {
+        "version": "2.3.4.0",
+          "changelog": "Settings look better on smal screen now.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/2.3.4/Moonfin.Server-2.3.4.0.zip",
+        "checksum": "05E9D038A43809959E0C8B40AF208C58",
+        "timestamp": "2026-09-10T15:30:36",
+        "dependencies": []
+      },
+      {
         "version": "2.3.3.0",
         "changelog": "Subbed/dubbed only mark animes now and not on mixed libraries all. New UI option plus ghosts gabs removed.",
         "targetAbi": "10.10.0.0",

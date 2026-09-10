@@ -7,6 +7,48 @@
 <body>
     <div id="MoonfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
         <style>
+            #MoonfinConfigPage #AnimeMarkersSection .checkboxContainer {
+                display: block;
+                margin: 0 0 1.5em 0;
+            }
+
+            #MoonfinConfigPage #AnimeMarkersSection .checkboxContainer > label {
+                display: flex;
+                align-items: center;
+                gap: 0.6em;
+                width: 100%;
+                margin: 0;
+            }
+
+            #MoonfinConfigPage #AnimeMarkersSection .checkboxContainer > label > span {
+                flex: 1 1 auto;
+                white-space: normal;
+                line-height: 1.4;
+            }
+
+            #MoonfinConfigPage #AnimeMarkersSection .fieldDescription {
+                display: block;
+                width: auto;
+                max-width: 70ch;
+                margin: 0.45em 0 0 2.4em;
+                line-height: 1.55;
+            }
+
+            #MoonfinConfigPage #AnimeMarkersSection .inputContainer {
+                margin-bottom: 1.5em;
+            }
+
+            #MoonfinConfigPage #AnimeMarkersSection .inputContainer .checkboxContainer {
+                margin: 0 0 0.35em 0;
+            }
+
+            @media (max-width: 800px) {
+                #MoonfinConfigPage #AnimeMarkersSection .fieldDescription {
+                    margin-left: 0;
+                    max-width: none;
+                }
+            }
+
             #MoonfinConfigPage #AdminThemeChooseBtn {
                 background: rgba(255, 255, 255, 0.08);
                 color: inherit;
@@ -645,7 +687,7 @@
                         </div>
                     </div>
 
-                    <div class="verticalSection">
+                    <div class="verticalSection" id="AnimeMarkersSection">
                         <h3 class="sectionTitle">Anime Filler &amp; Recap Markers</h3>
                         <div class="checkboxContainer">
                             <label>
@@ -665,6 +707,23 @@
                             <div class="fieldDescription">
                                 Leave everything unchecked to consider every library. Matching is a local title lookup, so
                                 narrowing this only helps if a non-anime show shares a title with an anime.
+                            </div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="AnimeAudioTrustSelectedLibraries" is="emby-checkbox" />
+                                <span>Treat everything in the selected libraries as anime</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Affects the Subbed/Dubbed pills. Normally an item also has to look like anime on its own,
+                                meaning it carries an AniList, AniDB, AniSearch, Kitsu or MyAnimeList id, or an
+                                &quot;Anime&quot; genre or tag. That check is what keeps a library holding both anime and
+                                ordinary shows from marking the ordinary ones.
+                                <br><br>
+                                If the libraries you picked above are <em>only</em> anime, turn this on: the check then
+                                only costs you the entries whose metadata happens to be thin, which would otherwise show
+                                no pill at all. Has no effect while no libraries are selected, since there is then
+                                nothing to trust.
                             </div>
                         </div>
                         <div class="checkboxContainer">
@@ -5553,6 +5612,7 @@
                     document.querySelector('#AnimeAudioMarkersEnabled').checked = config.AnimeAudioMarkersEnabled === true;
                     document.querySelector('#AnimeAudioMarkersMovies').checked = config.AnimeAudioMarkersMovies === true;
                     document.querySelector('#AnimeAudioSeparateDualAudio').checked = config.AnimeAudioSeparateDualAudio === true;
+                    document.querySelector('#AnimeAudioTrustSelectedLibraries').checked = config.AnimeAudioTrustSelectedLibraries === true;
                     document.querySelector('#AnimeMarkerPlacement').value = config.AnimeMarkerPlacement || 'below';
                     document.querySelector('#AnimeMarkerShowFiller').checked = config.AnimeMarkerShowFiller !== false;
                     document.querySelector('#AnimeMarkerShowMixed').checked = config.AnimeMarkerShowMixed !== false;
@@ -6296,6 +6356,7 @@
                         config.AnimeAudioMarkersEnabled = document.querySelector('#AnimeAudioMarkersEnabled').checked;
                         config.AnimeAudioMarkersMovies = document.querySelector('#AnimeAudioMarkersMovies').checked;
                         config.AnimeAudioSeparateDualAudio = document.querySelector('#AnimeAudioSeparateDualAudio').checked;
+                        config.AnimeAudioTrustSelectedLibraries = document.querySelector('#AnimeAudioTrustSelectedLibraries').checked;
                         config.AnimeMarkerPlacement = document.querySelector('#AnimeMarkerPlacement').value || 'below';
                         config.AnimeMarkerShowFiller = document.querySelector('#AnimeMarkerShowFiller').checked;
                         config.AnimeMarkerShowMixed = document.querySelector('#AnimeMarkerShowMixed').checked;
