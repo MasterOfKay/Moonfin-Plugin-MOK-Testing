@@ -10,13 +10,13 @@ namespace Moonfin.Server.Services;
 /// </summary>
 public static class AnimeMediaStreamReader
 {
-    private static bool _resolved;
+    private static volatile bool _resolved;
     private static Func<IMediaSourceManager?, BaseItem, IEnumerable?>? _accessor;
     private static readonly object Gate = new();
 
     /// <summary>
-    /// The language of every audio track on an item. Empty when the streams could not be
-    /// read at all, which the caller must treat as "unknown", never as "no dub".
+    /// The language of every audio track on an item. Empty when the streams cant be read at
+    /// all, which the caller must treat as "unknown", never as "no dub".
     /// </summary>
     public static IReadOnlyList<string?> GetAudioLanguages(IMediaSourceManager? sourceManager, BaseItem item)
     {
@@ -38,7 +38,7 @@ public static class AnimeMediaStreamReader
             var type = stream.GetType();
 
             // MediaStream.Type is an enum whose name is stable even where the assembly
-            // identity is not, so it is compared as text.
+            // identity isnt, so it gets compared as text.
             var typeValue = type.GetProperty("Type")?.GetValue(stream)?.ToString();
             if (!string.Equals(typeValue, "Audio", StringComparison.OrdinalIgnoreCase))
             {
@@ -50,8 +50,6 @@ public static class AnimeMediaStreamReader
 
         return languages;
     }
-
-    public static bool IsSupported => Resolve() != null;
 
     private static Func<IMediaSourceManager?, BaseItem, IEnumerable?>? Resolve()
     {
@@ -75,8 +73,8 @@ public static class AnimeMediaStreamReader
 
     private static Func<IMediaSourceManager?, BaseItem, IEnumerable?>? BuildAccessor()
     {
-        // Jellyfin 10.11 removed the IMediaSourceManager.GetMediaStreams(Guid) method that this plugin compiled against, 
-        // so the plugin must now read the streams in a way that works across versions.
+        // 10.11 dropped the IMediaSourceManager.GetMediaStreams(Guid) overload this compiled
+        // against, so the accessor gets resolved at runtime and works on either version.
         var byGuid = typeof(IMediaSourceManager).GetMethod(
             "GetMediaStreams",
             BindingFlags.Public | BindingFlags.Instance,

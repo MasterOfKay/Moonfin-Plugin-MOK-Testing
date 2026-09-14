@@ -6,9 +6,9 @@ using Microsoft.Extensions.Logging;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// A service that downloads and caches a table mapping various anime provider ids to MyAnimeList ids.
-/// The table is used to resolve a MyAnimeList id for a series when the AniList API is unavailable or disabled, so the recap pass can still run. 
-/// The table is downloaded from Fribb/anime-lists, which is a community-maintained mirror of AniList's own mapping table.
+/// Downloads and caches a table mapping anime provider ids to MyAnimeList ids, so the recap
+/// pass can resolve a show without going to the network. The table comes from
+/// Fribb/anime-lists, a community-maintained mirror of AniList's own mapping.
 /// </summary>
 public class AnimeIdMappingService
 {
@@ -20,8 +20,8 @@ public class AnimeIdMappingService
     private static readonly TimeSpan MappingMaxAge = TimeSpan.FromDays(14);
 
     /// <summary>
-    /// The service will not attempt to download the table more often than this, even if the existing copy is stale. 
-    /// This prevents a failed download from hammering the server with repeated requests.
+    /// The table wont be downloaded more often than this, even when the copy on disk is
+    /// stale, so a failed download doesnt hammer GitHub with retries.
     /// </summary>
     private static readonly TimeSpan DownloadRetryInterval = TimeSpan.FromHours(6);
 
@@ -31,6 +31,7 @@ public class AnimeIdMappingService
     private readonly string _mappingPath;
 
     private MappingIndex? _index;
+    private DateTime? _indexWrittenAt;
     private DateTimeOffset _lastDownloadAttempt = DateTimeOffset.MinValue;
 
     public AnimeIdMappingService(IHttpClientFactory httpClientFactory, ILogger<AnimeIdMappingService> logger)
@@ -39,12 +40,6 @@ public class AnimeIdMappingService
         _logger = logger;
         _mappingPath = Path.Combine(MoonfinPlugin.ResolveDataFolderPath(), MappingFileName);
     }
-
-    /// <summary>True once the table is in memory and lookups can succeed.</summary>
-    public bool IsLoaded => _index != null;
-
-    /// <summary>How many entries carry a MyAnimeList id, for the diagnostics readout.</summary>
-    public int MappingCount => _index?.Count ?? 0;
 
     /// <summary>
     /// Loads the table, downloading it only when the copy on disk is missing or stale. A
@@ -71,11 +66,18 @@ public class AnimeIdMappingService
                 await DownloadAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            // Only reparse when the file on disk has actually changed. A stale copy that
+            // cant be refreshed otherwise gets deserialised again on every single lookup.
             if (File.Exists(_mappingPath))
             {
-                _index = Parse(_mappingPath);
-                _logger.LogInformation(
-                    "Anime id mapping loaded ({Count} entries with a MyAnimeList id)", _index.Count);
+                var writtenAt = File.GetLastWriteTimeUtc(_mappingPath);
+                if (_index == null || _indexWrittenAt != writtenAt)
+                {
+                    _index = Parse(_mappingPath);
+                    _indexWrittenAt = writtenAt;
+                    _logger.LogInformation(
+                        "Anime id mapping loaded ({Count} entries with a MyAnimeList id)", _index.Count);
+                }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

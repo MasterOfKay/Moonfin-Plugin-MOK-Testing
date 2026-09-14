@@ -1,5 +1,4 @@
 using Jellyfin.Data.Enums;
-using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -33,14 +32,18 @@ public class AnimeMarkerResolver
     }
 
     /// <summary>
-    /// Returns the series that are candidates for matching to an AnimeFillerList show, based on the configured library ids. 
-    /// When no libraries are configured, the whole server is scanned.
-    /// When libraries are configured but none can be resolved, returns an empty list and logs a warning.
+    /// The series that could match an AnimeFillerList show. With no libraries configured the
+    /// whole server is scanned. With libraries configured but none of them resolvable,
+    /// nothing is scanned and a warning is logged.
     /// </summary>
-    public List<Series> GetCandidateSeries()
-    {
-        var libraryIds = GetSelectedLibraryFolderIds();
+    public List<Series> GetCandidateSeries() => GetCandidateSeries(GetSelectedLibraryFolderIds());
 
+    /// <summary>
+    /// The same, for a caller that has already resolved the library set and would rather
+    /// not pay for it twice.
+    /// </summary>
+    public List<Series> GetCandidateSeries(HashSet<Guid>? libraryIds)
+    {
         if (libraryIds == null)
         {
             return QuerySeries(null).ToList();
@@ -170,8 +173,7 @@ public class AnimeMarkerResolver
 
     /// <summary>
     /// Markers for one series' episodes, keyed by the Jellyfin episode id in "N" form.
-    /// Returns an empty result when the series does not match a show or its table has not
-    /// been fetched yet.
+    /// Empty when the series doesnt match a show or its table hasnt been fetched yet.
     /// </summary>
     public SeriesMarkerResult GetMarkersForSeries(Series series, TimeSpan maxAge)
     {
@@ -212,9 +214,6 @@ public class AnimeMarkerResolver
         return result;
     }
 
-    /// <summary>
-    /// Get the audio kind for a given item.
-    /// </summary>
     public AnimeAudioKind? GetAudioForItem(BaseItem item)
     {
         try
@@ -233,11 +232,16 @@ public class AnimeMarkerResolver
     /// True when the item is in a selected library or looks like anime, and so is a candidate
     /// for audio markers. When no libraries are configured, the whole server is scanned.
     /// </summary>
-    public bool IsAudioMarkerCandidateItem(BaseItem item)
-    {
-        var libraryIds = GetSelectedLibraryFolderIds();
+    public bool IsAudioMarkerCandidateItem(BaseItem item) =>
+        IsAudioMarkerCandidateItem(item, GetSelectedLibraryFolderIds());
 
-        // No libraries chosen, all items are candidates.
+    /// <summary>
+    /// The same, for a caller working through a batch that has already resolved the
+    /// library set once.
+    /// </summary>
+    public bool IsAudioMarkerCandidateItem(BaseItem item, HashSet<Guid>? libraryIds)
+    {
+        // No libraries chosen, so anything that looks like anime counts.
         if (libraryIds == null)
         {
             return LooksLikeAnime(item);
@@ -248,8 +252,8 @@ public class AnimeMarkerResolver
             return false;
         }
 
-        // Treats all items as Anime even if they don't have a match.
-        // Only for Anime only Libraries.
+        // Trusting the chosen libraries means everything in them counts as anime, whether
+        // or not it matches. That is what an anime-only library wants.
         return TrustsSelectedLibraries || LooksLikeAnime(item);
     }
 
@@ -284,13 +288,6 @@ public class AnimeMarkerResolver
         return false;
     }
 
-    /// <summary>
-    /// True when the series is a candidate for audio markers, either because it is in a
-    /// selected library or because it looks like anime. The latter is a best-effort guess
-    /// based on the ids the anime metadata plugins write and on an explicit genre or tag.
-    /// </summary>
-    public bool IsAudioMarkerCandidate(Series series) => IsAudioMarkerCandidateItem(series);
-
     private static readonly string[] AnimeProviderKeys =
     {
         "AniList", "AniDB", "AniDb", "Anidb", "AniSearch", "Kitsu", "KitsuIo", "MyAnimeList", "Mal"
@@ -301,8 +298,8 @@ public class AnimeMarkerResolver
     /// </summary>
     public static bool LooksLikeAnime(BaseItem item)
     {
-        // An episode carries almost no provider ids of its own; the anime ids live on the
-        // series. Checking the episode alone would call every anime episode "not anime".
+        // An episode carries almost no provider ids of its own. The anime ids live on the
+        // series, so checking the episode alone would call every anime episode not anime.
         if (item is Episode episode)
         {
             var parentSeries = episode.Series;
@@ -347,16 +344,15 @@ public class AnimeMarkerResolver
         return false;
     }
 
-    /// <summary>
-    /// Builds the subbed/dubbed verdicts for a series' episodes and seasons, based on the
-    /// languages of the audio tracks in each file. Returns an empty result when the series
-    /// has no episodes or none of them have audio streams.
-    /// </summary>
     private static readonly TimeSpan AudioCacheTtl = TimeSpan.FromMinutes(10);
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, (DateTimeOffset At, AudioMarkerResult Result)>
         AudioCache = new();
 
+    /// <summary>
+    /// The subbed/dubbed verdicts for a series' episodes and seasons, from the languages of
+    /// the audio tracks in each file. Empty when no episode carries a usable language tag.
+    /// </summary>
     public AudioMarkerResult BuildAudioMarkers(Series series)
     {
         if (AudioCache.TryGetValue(series.Id, out var cached) &&
@@ -423,7 +419,8 @@ public class AnimeMarkerResolver
 
         AudioCache[series.Id] = (DateTimeOffset.UtcNow, result);
 
-        // Bounded so a large library cannot grow this without limit.
+        // Trimmed once it grows past the cap, dropping only entries already past their TTL.
+        // A burst of browsing inside one TTL window can still run over it.
         if (AudioCache.Count > 200)
         {
             foreach (var stale in AudioCache
@@ -439,9 +436,8 @@ public class AnimeMarkerResolver
     }
 
     /// <summary>
-    /// Returns the cached entry for a series' matched show, or null when the series 
-    /// does not match a show or the table has not been fetched yet. 
-    /// The entry is considered stale if it is older than the specified age.
+    /// The cached entry for a series' matched show, or null when the series doesnt match or
+    /// its table hasnt been fetched inside <paramref name="maxAge"/>.
     /// </summary>
     public AnimeMarkerCacheEntry? GetCachedEntry(Series series, TimeSpan maxAge)
     {
@@ -450,8 +446,8 @@ public class AnimeMarkerResolver
     }
 
     /// <summary>
-    /// Builds a series' absolute numbering from its season and index numbers, 
-    /// and returns the numbering mode the library is using. 
+    /// Builds a series' absolute numbering from its season and index numbers,
+    /// and returns the numbering mode the library is using.
     /// The mode is surfaced because it is the single
     /// most useful thing to see when markers land on the wrong episodes.
     /// </summary>
@@ -464,7 +460,7 @@ public class AnimeMarkerResolver
             IsVirtualItem = false,
             Recursive = true
         }).Items.OfType<Episode>()
-            // Season 0 is specials, which the site does not list alongside the main run.
+            // Season 0 is specials, which the site doesnt list alongside the main run.
             .Where(episode => episode.ParentIndexNumber is > 0 && episode.IndexNumber is > 0)
             // A recursive query under a series matches each episode once per ancestor it
             // has, so an episode inside a season comes back twice. Left in, that doubles
@@ -538,7 +534,7 @@ public class AnimeMarkerResolver
         }
 
         // A season's length is the highest index seen in it, not how many episodes are
-        // present, so a library missing an episode mid-season does not shift every later
+        // present, so a library missing an episode mid-season doesnt shift every later
         // episode onto the wrong marker.
         var seasonLengths = new Dictionary<int, int>();
         foreach (var (season, index) in episodes)
@@ -593,13 +589,13 @@ public class SeriesMarkerResult
     /// <summary>Jellyfin episode id ("N" form) to its marker. Unmatched episodes are absent.</summary>
     public Dictionary<string, AnimeMarkerEpisode> Episodes { get; } = new();
 
-    /// <summary>The matched show's slug, or null when the series did not match.</summary>
+    /// <summary>The matched show's slug, or null when the series didnt match.</summary>
     public string? Slug { get; set; }
 
     /// <summary>The matched show's title on the site, for the admin readout.</summary>
     public string? Title { get; set; }
 
-    /// <summary>True when the series matched a show whose table has not been fetched yet.</summary>
+    /// <summary>True when the series matched a show whose table hasnt been fetched yet.</summary>
     public bool Pending { get; set; }
 
     /// <summary>

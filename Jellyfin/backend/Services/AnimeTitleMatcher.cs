@@ -14,15 +14,14 @@ public static class AnimeTitleMatcher
     private static readonly Regex YearOnly = new(@"^(19|20)\d{2}$", RegexOptions.Compiled);
 
     /// <summary>
-    /// The site sometimes appends a season marker to the title, which is not part of the name and should be ignored.
+    /// The site sometimes appends a season marker to the title, which isnt part of the name.
     /// </summary>
     private static readonly Regex SeasonSuffix = new(
         @"\s+(season\s*\d+|\d+(st|nd|rd|th)\s+season|part\s*\d+|cour\s*\d+|s\d+)$",
         RegexOptions.Compiled);
 
     /// <summary>
-    /// Folds diacritics, lowercases, and removes punctuation and whitespace. 
-    /// The result is a key that can be used to compare titles.
+    /// Folds diacritics, lowercases, and drops punctuation, leaving a key titles compare on.
     /// </summary>
     public static string Normalize(string? title)
     {
@@ -56,8 +55,8 @@ public static class AnimeTitleMatcher
     }
 
     /// <summary>
-    /// The keys built from the title itself, with a year in parentheses 
-    /// kept as a disambiguator rather than an alternate name. A bare year is never an alternate name.
+    /// The keys built from the title itself. A year in parentheses is kept as a
+    /// disambiguator rather than treated as an alternate name.
     /// </summary>
     public static IEnumerable<string> PrimaryVariants(string? title)
     {
@@ -163,8 +162,7 @@ public static class AnimeTitleMatcher
     }
 
     /// <summary>
-    /// Finds the first show in the index that matches any of the candidate titles, 
-    /// or null if none do. The index is expected to be built from <see cref="BuildIndex"/>.
+    /// The first show in the index matching any of the candidate titles, or null if none do.
     /// </summary>
     public static AnimeFillerShow? Match(
         IReadOnlyDictionary<string, AnimeFillerShow> index,

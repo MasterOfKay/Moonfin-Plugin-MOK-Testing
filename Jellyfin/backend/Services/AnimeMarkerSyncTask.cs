@@ -6,9 +6,8 @@ using Moonfin.Server.Helpers;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// Scheduled task that fetches the AnimeFillerList catalogue and individual show pages, parses
-/// them into a form that can be used to mark episodes as filler, recap or canon, 
-/// and caches the results for the library to use.
+/// Scheduled task that fetches the AnimeFillerList catalogue and the show pages behind it,
+/// then caches the episode classifications for the library to draw from.
 /// </summary>
 public class AnimeMarkerSyncTask : IScheduledTask
 {
@@ -19,8 +18,7 @@ public class AnimeMarkerSyncTask : IScheduledTask
     public string Category => "Moonfin";
 
     /// <summary>
-    /// The maximum time the task is allowed to run before it is considered to have failed. 
-    /// The task is scheduled daily, so this should be less than 24 hours.
+    /// How long a run is allowed to take before it stops and leaves the rest for tomorrow.
     /// </summary>
     private static readonly TimeSpan RunBudget = TimeSpan.FromMinutes(45);
 
@@ -214,8 +212,8 @@ public class AnimeMarkerSyncTask : IScheduledTask
     }
 
     /// <summary>
-    /// Fetches the MyAnimeList recap flags for every show that matched a series and has a cached table,
-    /// but has not yet had its recap flags fetched.
+    /// Fetches recap flags for every matched show that has a cached table but hasnt had its
+    /// recap flags fetched yet.
     /// </summary>
     private async Task FetchRecapsAsync(List<SeriesMatch> matches, Stopwatch clock, CancellationToken cancellationToken)
     {
@@ -226,7 +224,12 @@ public class AnimeMarkerSyncTask : IScheduledTask
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (clock.Elapsed > RunBudget || !seen.Add(match.Show.Slug))
+            if (clock.Elapsed > RunBudget)
+            {
+                break;
+            }
+
+            if (!seen.Add(match.Show.Slug))
             {
                 continue;
             }
@@ -277,7 +280,7 @@ public class AnimeMarkerSyncTask : IScheduledTask
             }
 
             entry.RecapMalId = malId;
-            _cache.Set(match.Show.Slug, entry);
+            _cache.Update(match.Show.Slug, entry);
             updated++;
         }
 
@@ -289,7 +292,8 @@ public class AnimeMarkerSyncTask : IScheduledTask
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        // Daily only, and never at startup. See the class remarks.
+        // Daily and never at startup, since a first run walks the whole library at the
+        // site's ten second crawl delay.
         yield return TaskTriggers.Daily(TimeSpan.FromHours(4));
     }
 }

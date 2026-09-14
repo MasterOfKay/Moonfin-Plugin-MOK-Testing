@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// One of the four categories AnimeFillerList uses to classify episodes. The site does not
-/// have a separate "recap" category, so recaps are stored in a separate field.
+/// One of the four categories AnimeFillerList uses to classify episodes. The site doesnt
+/// have a recap category, so recaps are stored in a field of their own.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AnimeEpisodeKind
@@ -74,7 +74,7 @@ public class AnimeMarkerCacheEntry
 
     /// <summary>
     /// The MyAnimeList id the recap flags came from, when one was resolved. Null means the
-    /// recap pass has not run for this show, so <see cref="AnimeMarkerEpisode.Recap"/> is
+    /// recap pass hasnt run for this show, so <see cref="AnimeMarkerEpisode.Recap"/> is
     /// "not known" rather than "known false".
     /// </summary>
     [JsonPropertyName("recapMalId")]

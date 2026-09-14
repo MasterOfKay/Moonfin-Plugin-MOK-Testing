@@ -4,8 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// A dedicated log for working out why a badge is or is not appearing. 
-/// It records every marker request a client makes and what it was answered with.
+/// A dedicated log for working out why a badge is or isnt appearing. It records every
+/// marker request a client makes and what it was answered with.
 /// </summary>
 public class AnimeMarkerDiagnosticLog
 {
@@ -15,8 +15,8 @@ public class AnimeMarkerDiagnosticLog
     private const string LogFileName = "moonfin-anime-markers.log";
 
     /// <summary>
-    /// The maximum size of the log file before it is rotated. The log is for debugging, 
-    /// so it is not expected to be large. The log is rotated to a .1 file, which is also deleted when it exceeds
+    /// How large the log gets before it rotates to a .1 file. Only the current file and one
+    /// previous are kept.
     /// </summary>
     private const long MaxBytes = 2 * 1024 * 1024;
 

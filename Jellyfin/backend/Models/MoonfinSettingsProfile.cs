@@ -21,6 +21,12 @@ public class MoonfinSettingsProfile
     [JsonPropertyName("seerrBlockNsfw")]
     public bool? SeerrBlockNsfw { get; set; }
 
+    [JsonPropertyName("seerrShowMissingCollectionItems")]
+    public bool? SeerrShowMissingCollectionItems { get; set; }
+
+    [JsonPropertyName("showSeerrAvailabilityBadges")]
+    public bool? ShowSeerrAvailabilityBadges { get; set; }
+
     [JsonPropertyName("seerrRows")]
     public SeerrRowsConfig? SeerrRows { get; set; }
 
@@ -196,6 +202,9 @@ public class MoonfinSettingsProfile
 
     [JsonPropertyName("homeRowsStyle")]
     public string? HomeRowsStyle { get; set; }
+
+    [JsonPropertyName("modernCardsOnMyMediaRow")]
+    public bool? ModernCardsOnMyMediaRow { get; set; }
 
     [JsonPropertyName("modernHomeRowsPadding")]
     public int? ModernHomeRowsPadding { get; set; }
@@ -378,6 +387,33 @@ public class MoonfinSettingsProfile
 
     [JsonPropertyName("screensaverRequireRating")]
     public bool? ScreensaverRequireRating { get; set; }
+
+    [JsonPropertyName("screensaverBackdrop")]
+    public string? ScreensaverBackdrop { get; set; }
+
+    [JsonPropertyName("screensaverComponent")]
+    public string? ScreensaverComponent { get; set; }
+
+    [JsonPropertyName("screensaverMovement")]
+    public string? ScreensaverMovement { get; set; }
+
+    [JsonPropertyName("screensaverPosition")]
+    public string? ScreensaverPosition { get; set; }
+
+    [JsonPropertyName("screensaverSize")]
+    public string? ScreensaverSize { get; set; }
+
+    [JsonPropertyName("screensaverContentType")]
+    public string? ScreensaverContentType { get; set; }
+
+    [JsonPropertyName("screensaverLibraryIds")]
+    public List<string>? ScreensaverLibraryIds { get; set; }
+
+    [JsonPropertyName("screensaverCollectionIds")]
+    public List<string>? ScreensaverCollectionIds { get; set; }
+
+    [JsonPropertyName("screensaverExcludedGenres")]
+    public List<string>? ScreensaverExcludedGenres { get; set; }
 
     // Subtitles. Colours travel as #AARRGGBB strings so clients that store an int and
     // clients that store a CSS colour can both round-trip them without loss.
@@ -848,6 +884,9 @@ public class MoonfinSettingsProfile
     [JsonPropertyName("crashReportsEnabled")]
     public bool? CrashReportsEnabled { get; set; }
 
+    [JsonPropertyName("showDownloadsButton")]
+    public bool? ShowDownloadsButton { get; set; }
+
     [JsonPropertyName("showServerMessagesButton")]
     public bool? ShowServerMessagesButton { get; set; }
 
@@ -889,6 +928,21 @@ public class MoonfinSettingsProfile
 
     [JsonPropertyName("recentlyReleasedSeriesType")]
     public string? RecentlyReleasedSeriesType { get; set; }
+
+    [JsonPropertyName("loadingAnimationImage")]
+    public string? LoadingAnimationImage { get; set; }
+
+    [JsonPropertyName("loadingAnimationSize")]
+    public string? LoadingAnimationSize { get; set; }
+
+    [JsonPropertyName("loadingAnimationPosition")]
+    public string? LoadingAnimationPosition { get; set; }
+
+    [JsonPropertyName("loadingAnimationSpeed")]
+    public string? LoadingAnimationSpeed { get; set; }
+
+    [JsonPropertyName("showLoadingAnimationText")]
+    public bool? ShowLoadingAnimationText { get; set; }
 }
 
 

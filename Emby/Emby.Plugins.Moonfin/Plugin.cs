@@ -105,6 +105,8 @@ namespace Emby.Plugins.Moonfin
 
         public string PluginsPath => ApplicationPaths.PluginsPath;
 
+        internal string LogDirectoryPath => ApplicationPaths.LogDirectoryPath;
+
         public ImageFormat ThumbImageFormat => ImageFormat.Png;
 
         public Stream GetThumbImage()

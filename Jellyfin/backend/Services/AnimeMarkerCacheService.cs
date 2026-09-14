@@ -3,11 +3,8 @@ using Microsoft.Extensions.Logging;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// Persistent cache of AnimeFillerList episode tables, keyed by "afl:{slug}".
-///
-/// The cache is stored in a single JSON file, so it can be read and written in one go.
-/// The cache is not thread-safe, so the service ensures it is only read or written
-/// by one thread at a time.
+/// Persistent cache of AnimeFillerList episode tables, keyed by "afl:{slug}" and held in a
+/// single JSON file.
 /// </summary>
 public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEntry>
 {
@@ -16,10 +13,9 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
     {
     }
 
-    /// <summary>
-    /// Returns the cache key for a show's slug.
-    /// </summary>
-    public static string KeyFor(string slug) => "afl:" + slug;
+    private const string KeyPrefix = "afl:";
+
+    private static string KeyFor(string slug) => KeyPrefix + slug;
 
     /// <summary>
     /// The cached table for a show, or null when it is missing or older than
@@ -53,6 +49,14 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
         EnsureLoaded()[KeyFor(slug)] = entry;
     }
 
+    /// <summary>
+    /// Stores an entry without moving its fetch time. The recap pass only adds a field to a
+    /// table the filler pass fetched, so marking it fresh would buy an airing show another
+    /// full max-age before its episode list is read again.
+    /// </summary>
+    public void Update(string slug, AnimeMarkerCacheEntry entry) =>
+        EnsureLoaded()[KeyFor(slug)] = entry;
+
     /// <summary>Slugs whose cached table is still fresh, so the next sync can skip them.</summary>
     public HashSet<string> GetFreshSlugs(TimeSpan maxAge)
     {
@@ -62,10 +66,10 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
 
         foreach (var (key, entry) in cache)
         {
-            if (key.StartsWith("afl:", StringComparison.OrdinalIgnoreCase) &&
+            if (key.StartsWith(KeyPrefix, StringComparison.OrdinalIgnoreCase) &&
                 now - entry.CachedAt < maxAge)
             {
-                slugs.Add(key[4..]);
+                slugs.Add(key[KeyPrefix.Length..]);
             }
         }
 

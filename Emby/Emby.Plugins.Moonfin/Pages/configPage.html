@@ -604,6 +604,23 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h3 class="sectionTitle">Diagnostics</h3>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input type="checkbox" id="EnableClientLogUpload" is="emby-checkbox" />
+                                <span>Enable client log upload</span>
+                            </label>
+                            <div class="fieldDescription">
+                                Lets Moonfin clients send diagnostic and crash reports to this server, where they
+                                appear under Logs as <code>upload_&lt;client&gt;_&lt;version&gt;_&lt;time&gt;.txt</code>.
+                                This is what makes the app's "Send report to server" button work. Reports have
+                                server addresses, IP addresses and access tokens stripped out before they leave
+                                the device, and each user can upload 10 an hour, up to 1 MB each.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h3 class="sectionTitle">Moonfin Web Client</h3>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="WebDefaultServerUrl">Default Server URL (Optional)</label>
@@ -991,12 +1008,153 @@
                                 </select>
                             </div>
                             <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultLoadingAnimationImage">Loading Animation Image</label>
+                                <select id="DefaultLoadingAnimationImage" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="none">None</option>
+                                    <option value="moonfinLogo">Moonfin Logo</option>
+                                    <option value="spinner">Spinner</option>
+                                    <option value="runner">Runner</option>
+                                    <option value="moonPhases">Moon Phases</option>
+                                    <option value="moonfinPhases">Moonfin Phases</option>
+                                    <option value="neonfinPhases">Neonfin Phases</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultLoadingAnimationPosition">Loading Animation Position</label>
+                                <select id="DefaultLoadingAnimationPosition" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="topLeft">Top-Left</option>
+                                    <option value="topCenter">Top-Center</option>
+                                    <option value="topRight">Top-Right</option>
+                                    <option value="middleLeft">Middle-Left</option>
+                                    <option value="middle">Middle</option>
+                                    <option value="middleRight">Middle-Right</option>
+                                    <option value="bottomLeft">Bottom-Left</option>
+                                    <option value="bottomCenter">Bottom-Center</option>
+                                    <option value="bottomRight">Bottom-Right</option>
+                                    <option value="bouncing">Bouncing</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultLoadingAnimationSize">Loading Animation Size</label>
+                                <select id="DefaultLoadingAnimationSize" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="thumbnail">Thumbnail</option>
+                                    <option value="small">Small</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="large">Large</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultLoadingAnimationSpeed">Loading Animation Speed</label>
+                                <select id="DefaultLoadingAnimationSpeed" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="slow">Slow</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="fast">Fast</option>
+                                    <option value="ultra">Ultra</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultShowLoadingAnimationText">Show Loading Animation Text</label>
+                                <select id="DefaultShowLoadingAnimationText" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverMode">Screensaver Mode (TV clients only)</label>
                                 <select id="DefaultScreensaverMode" is="emby-select">
                                     <option value="">Not set (user decides)</option>
                                     <option value="logo">Logo</option>
                                     <option value="library">Library</option>
                                 </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverBackdrop">Screensaver Backdrop</label>
+                                <select id="DefaultScreensaverBackdrop" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="library">Library Art</option>
+                                    <option value="black">Black</option>
+                                    <option value="moonfin">Moonfin</option>
+                                    <option value="calm">Calm</option>
+                                    <option value="neonPulse">Neon Pulse</option>
+                                    <option value="aurora">Aurora</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverComponent">Screensaver Additional Component</label>
+                                <select id="DefaultScreensaverComponent" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="none">None</option>
+                                    <option value="moonfinLogo">Moonfin Logo</option>
+                                    <option value="clock">Clock</option>
+                                    <option value="runner">Runner</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverMovement">Screensaver Component Movement</label>
+                                <select id="DefaultScreensaverMovement" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="staticCorner">Static</option>
+                                    <option value="slow">Slow</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="fast">Fast</option>
+                                    <option value="ultra">Ultra</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverPosition">Screensaver Component Position</label>
+                                <select id="DefaultScreensaverPosition" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="topLeft">Top-Left</option>
+                                    <option value="topCenter">Top-Center</option>
+                                    <option value="topRight">Top-Right</option>
+                                    <option value="middleLeft">Middle-Left</option>
+                                    <option value="middle">Middle</option>
+                                    <option value="middleRight">Middle-Right</option>
+                                    <option value="bottomLeft">Bottom-Left</option>
+                                    <option value="bottomCenter">Bottom-Center</option>
+                                    <option value="bottomRight">Bottom-Right</option>
+                                </select>
+                                <div class="fieldDescription">Applies when the component movement is Static.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverSize">Screensaver Component Size</label>
+                                <select id="DefaultScreensaverSize" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="thumbnail">Thumbnail</option>
+                                    <option value="small">Small</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="large">Large</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultScreensaverContentType">Screensaver Content Type</label>
+                                <select id="DefaultScreensaverContentType" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="both">Movies &amp; TV Shows</option>
+                                    <option value="movies">Movies Only</option>
+                                    <option value="tvshows">TV Shows Only</option>
+                                </select>
+                                <div class="fieldDescription">What the Library Art backdrop shows.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Screensaver Source Libraries</label>
+                                <div id="DefaultScreensaverLibraryPicker" style="max-height:260px;overflow-y:auto;border:1px solid rgba(128,128,128,0.3);border-radius:4px;padding:6px;margin-top:6px;"></div>
+                                <div class="fieldDescription">Libraries the Library Art backdrop draws from. Leave all unchecked to use every movie and show library.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Screensaver Source Collections</label>
+                                <div id="DefaultScreensaverCollectionPicker" style="max-height:260px;overflow-y:auto;border:1px solid rgba(128,128,128,0.3);border-radius:4px;padding:6px;margin-top:6px;"></div>
+                                <div class="fieldDescription">Limit the Library Art backdrop to these collections.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Screensaver Excluded Genres</label>
+                                <div id="DefaultScreensaverGenrePicker" style="max-height:260px;overflow-y:auto;border:1px solid rgba(128,128,128,0.3);border-radius:4px;padding:6px;margin-top:6px;"></div>
+                                <div class="fieldDescription">Titles in these genres never appear in the screensaver.</div>
                             </div>
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultConfirmExit">Confirm Exit (TV clients only)</label>
@@ -1177,6 +1335,14 @@
                                     <span id="DefaultNavbarOpacity_Val" style="font-weight: 600; min-width: 40px; color: #00a4dc; text-align: right; font-size: 0.95em;">--</span>
                                 </div>
                             </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultNavbarAlwaysExpanded">Always Expand Navbar Labels</label>
+                                <select id="DefaultNavbarAlwaysExpanded" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
 
                             <h4 style="margin: 1.5em 0 0.5em; font-size: 0.95em; color: #00a4dc;">Nav Buttons</h4>
                             <div class="inputContainer">
@@ -1221,14 +1387,6 @@
                                 </select>
                             </div>
                             <div class="inputContainer">
-                                <label class="inputLabel inputLabelUnfocused" for="DefaultNavbarAlwaysExpanded">Always Expand Navbar Labels</label>
-                                <select id="DefaultNavbarAlwaysExpanded" is="emby-select">
-                                    <option value="">Not set (user decides)</option>
-                                    <option value="true">Yes</option>
-                                    <option value="false">No</option>
-                                </select>
-                            </div>
-                            <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultEnableFolderView">Enable Folder View</label>
                                 <select id="DefaultEnableFolderView" is="emby-select">
                                     <option value="">Not set (user decides)</option>
@@ -1239,6 +1397,14 @@
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultShowSeerrButton">Show Seerr Button</label>
                                 <select id="DefaultShowSeerrButton" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultShowDownloadsButton">Show Downloads Button</label>
+                                <select id="DefaultShowDownloadsButton" is="emby-select">
                                     <option value="">Not set (user decides)</option>
                                     <option value="true">Yes</option>
                                     <option value="false">No</option>
@@ -1264,6 +1430,15 @@
                                     <option value="v1">Classic</option>
                                     <option value="v2">Modern</option>
                                 </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultModernCardsOnMyMediaRow">Modern cards on My Media row</label>
+                                <select id="DefaultModernCardsOnMyMediaRow" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <div class="fieldDescription">Display customizable posters that expand on focus. Disable to always show landscape thumbnail.</div>
                             </div>
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultMergeContinueWatchingNextUp">Merge Continue Watching and Next Up</label>
@@ -2477,6 +2652,23 @@
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="DefaultSeerrBlockNsfw">Seerr Block NSFW</label>
                                 <select id="DefaultSeerrBlockNsfw" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultSeerrShowMissingCollectionItems">Show Missing Collection Items</label>
+                                <select id="DefaultSeerrShowMissingCollectionItems" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <div class="fieldDescription">Include missing items on Collection pages.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultShowSeerrAvailabilityBadges">Show Seerr Availability Badges</label>
+                                <select id="DefaultShowSeerrAvailabilityBadges" is="emby-select">
                                     <option value="">Not set (user decides)</option>
                                     <option value="true">Yes</option>
                                     <option value="false">No</option>

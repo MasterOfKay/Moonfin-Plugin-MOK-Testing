@@ -71,9 +71,6 @@ public static class AnimeFillerListParser
         return byNumber.Values.OrderBy(episode => episode.Number).ToList();
     }
 
-    /// <summary>
-    /// Parses the episode row's class attribute into a kind, or null if the class is unrecognized.
-    /// </summary>
     private static AnimeEpisodeKind? ParseKind(string cssClass) => cssClass.Trim().ToLowerInvariant() switch
     {
         "manga_canon" => AnimeEpisodeKind.MangaCanon,

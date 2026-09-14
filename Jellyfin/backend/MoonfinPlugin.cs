@@ -81,6 +81,8 @@ public class MoonfinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
         }
         catch
         {
+            // A host that wont hand over its log directory just means the log lands in the
+            // data folder instead, which is still somewhere the admin can reach.
         }
 
         return ResolveDataFolderPath();

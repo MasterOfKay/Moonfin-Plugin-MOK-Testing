@@ -8,17 +8,19 @@ using Microsoft.Extensions.Logging;
 namespace Moonfin.Server.Services;
 
 /// <summary>
-/// Fetches the MyAnimeList recap flags for a series, resolving the MyAnimeList id first.
+/// Finds which episodes are recaps, which AnimeFillerList has no category for. The episode
+/// data comes from api.tenrai.org, a third-party mirror of the MyAnimeList episode lists
+/// that needs no account or key. A failed lookup records nothing, so the filler data is
+/// never held up by it.
 /// </summary>
 public class AnimeRecapFetchService
 {
-    
-    private const string EpisodeApiBase = "https://api.tenrai.org/v1";
 
+    private const string EpisodeApiBase = "https://api.tenrai.org/v1";
 
     private const string AniListEndpoint = "https://graphql.anilist.co";
 
-    /// <summary>The API rate limits at roughly a few requests a second.</summary>
+    /// <summary>The episode API allows a few requests a second, so they get spaced out.</summary>
     private static readonly TimeSpan MinRequestSpacing = TimeSpan.FromSeconds(2);
 
     /// <summary>Guards against a malformed pagination response spinning forever. 100 episodes a page.</summary>
@@ -50,8 +52,8 @@ public class AnimeRecapFetchService
     }
 
     /// <summary>
-    /// Fetches the MyAnimeList recap flags for a series, resolving the MyAnimeList id first.
-    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// Resolves a series to its MyAnimeList id, trying its provider ids first, then the
+    /// offline mapping table, then AniList. Returns null when nothing matched.
     /// </summary>
     public async Task<int?> TryResolveMalIdAsync(BaseItem series, CancellationToken cancellationToken)
     {
@@ -83,9 +85,8 @@ public class AnimeRecapFetchService
     }
 
     /// <summary>
-    /// Resolves a series by its title using AniList's search API. 
-    /// Returns null when the lookup failed, so the caller leaves the cached show alone 
-    /// instead of recording an empty answer.
+    /// Looks a series up by title on AniList. The search is fuzzy, so the answer only counts
+    /// when one of the titles it comes back with normalises to the one we asked for.
     /// </summary>
     private async Task<int?> ResolveByTitleAsync(string? title, CancellationToken cancellationToken)
     {
@@ -154,8 +155,8 @@ public class AnimeRecapFetchService
     }
 
     /// <summary>
-    /// Fetches the MyAnimeList recap flags for a series, resolving the MyAnimeList id first.
-    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// The episode numbers this entry marks as recaps. Returns null when the lookup failed,
+    /// so the caller leaves the cached show alone rather than recording an empty answer.
     /// </summary>
     public async Task<RecapLookup?> FetchRecapsAsync(int malId, CancellationToken cancellationToken)
     {
@@ -185,11 +186,15 @@ public class AnimeRecapFetchService
 
             if (response.Pagination?.HasNextPage != true)
             {
-                break;
+                return new RecapLookup(recaps, episodeCount);
             }
         }
 
-        return new RecapLookup(recaps, episodeCount);
+        // Out of pages with more still to come. Handing back a partial answer would let the
+        // caller write recap=false over every episode we never got to see.
+        _logger.LogDebug(
+            "Recap lookup for MAL {MalId} hit the page cap with more still to fetch", malId);
+        return null;
     }
 
     private const int MaxAttemptsPerPage = 3;
@@ -243,7 +248,7 @@ public class AnimeRecapFetchService
                         body = body[..200];
                     }
                 }
-                catch
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     // The status alone still tells us something.
                 }
@@ -252,8 +257,8 @@ public class AnimeRecapFetchService
                 _logger.LogDebug(
                     "Recap lookup for MAL {MalId} page {Page} returned {Status}", malId, page, status);
 
-                // 5xx and 429 are the API or MyAnimeList being briefly unavailable. A 404 is a
-                // that the entry does not exist, and must not be retried.
+                // 5xx and 429 mean the API is briefly unavailable. A 404 means the entry
+                // doesnt exist, so it must not be retried.
                 return (null, status >= 500 || status == 429);
             }
 
@@ -353,8 +358,7 @@ public class AnimeRecapFetchService
     }
 
     /// <summary>
-    /// The episode numbers MyAnimeList marks as recaps, along with how many episodes the entry has.
-    /// Returns null when the lookup failed, so the caller leaves the cached show alone instead of recording an empty answer.
+    /// The episode numbers marked as recaps, and how many episodes the entry covers.
     /// </summary>
     public readonly record struct RecapLookup(HashSet<int> RecapNumbers, int EpisodeCount);
 

@@ -19,8 +19,15 @@ public class AnimeFillerListClient
     /// </summary>
     public static readonly TimeSpan CrawlDelay = TimeSpan.FromSeconds(10);
 
-    /// <summary>A show's filler list never changes.</summary>
+    /// <summary>How long the downloaded show index stays fresh.</summary>
     private static readonly TimeSpan CatalogMaxAge = TimeSpan.FromDays(14);
+
+    /// <summary>
+    /// The catalogue is checked on every client request, so a failed download has to back
+    /// off. Without this an unreachable site costs every request the crawl delay plus the
+    /// HTTP timeout before it gives up.
+    /// </summary>
+    private static readonly TimeSpan DownloadRetryInterval = TimeSpan.FromHours(6);
 
     private static readonly SemaphoreSlim RequestGate = new(1, 1);
     private static DateTimeOffset _lastRequestAt = DateTimeOffset.MinValue;
@@ -30,8 +37,11 @@ public class AnimeFillerListClient
     private readonly SemaphoreSlim _catalogLock = new(1, 1);
     private readonly string _catalogPath;
 
+    private static readonly Dictionary<string, AnimeFillerShow> EmptyIndex = new(StringComparer.Ordinal);
+
     private List<AnimeFillerShow>? _shows;
     private Dictionary<string, AnimeFillerShow>? _index;
+    private DateTimeOffset _lastDownloadAttempt = DateTimeOffset.MinValue;
 
     public AnimeFillerListClient(IHttpClientFactory httpClientFactory, ILogger<AnimeFillerListClient> logger)
     {
@@ -53,8 +63,7 @@ public class AnimeFillerListClient
     /// <summary>
     /// The title-to-show lookup. Empty until <see cref="EnsureCatalogAsync"/> succeeds.
     /// </summary>
-    public IReadOnlyDictionary<string, AnimeFillerShow> Index =>
-        _index ?? new Dictionary<string, AnimeFillerShow>(StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, AnimeFillerShow> Index => _index ?? EmptyIndex;
 
     /// <summary>
     /// Loads the show index, downloading it only when the cached copy is missing or stale.
@@ -75,8 +84,11 @@ public class AnimeFillerListClient
                 return;
             }
 
-            if (IsCatalogStale())
+            if (IsCatalogStale() &&
+                DateTimeOffset.UtcNow - _lastDownloadAttempt > DownloadRetryInterval)
             {
+                _lastDownloadAttempt = DateTimeOffset.UtcNow;
+
                 var downloaded = await DownloadCatalogAsync(cancellationToken).ConfigureAwait(false);
                 if (downloaded != null)
                 {
@@ -179,8 +191,8 @@ public class AnimeFillerListClient
     }
 
     /// <summary>
-    /// Fetches one show's episode table. Returns null when the page could not be read, and
-    /// an empty list only when the page lists no episodes.
+    /// Fetches one show's episode table. Returns null when the page cant be read, and an
+    /// empty list only when the page lists no episodes.
     /// </summary>
     public async Task<List<AnimeMarkerEpisode>?> FetchEpisodesAsync(string slug, CancellationToken cancellationToken)
     {
@@ -189,7 +201,7 @@ public class AnimeFillerListClient
     }
 
     /// <summary>
-    /// Fetches a page and returns its HTML, or null if the page does not exist or could not be read.
+    /// Fetches a page and returns its HTML, or null if the page doesnt exist or cant be read.
     /// </summary>
     private async Task<string?> GetStringAsync(string url, CancellationToken cancellationToken)
     {

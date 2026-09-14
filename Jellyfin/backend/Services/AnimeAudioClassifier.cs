@@ -25,10 +25,9 @@ public enum AnimeAudioKind
 /// Decides whether an episode is subbed or dubbed from the languages its audio tracks
 /// declare.
 ///
-/// The rule is the one a viewer actually means: Japanese and nothing else is "subbed";
-/// the presence of any other spoken language makes it "dubbed", whether or not the
-/// Japanese track is still there. Kept free of Jellyfin types so the awkward cases can be
-/// tested directly.
+/// The rule is what a viewer actually means. Japanese and nothing else is subbed. Any other
+/// spoken language makes it dubbed, whether or not the Japanese track is still there. Kept
+/// free of Jellyfin types so the awkward cases can be tested directly.
 /// </summary>
 public static class AnimeAudioClassifier
 {
@@ -42,8 +41,8 @@ public static class AnimeAudioClassifier
     };
 
     /// <summary>
-    /// Values that mean "nobody tagged this", which is not a language and must not be read
-    /// as a foreign dub. A file tagged only with these is left unclassified.
+    /// Values that mean "nobody tagged this", which isnt a language and must not be read as
+    /// a foreign dub. A file tagged only with these is left unclassified.
     /// </summary>
     private static readonly HashSet<string> UnknownCodes = new(StringComparer.OrdinalIgnoreCase)
     {

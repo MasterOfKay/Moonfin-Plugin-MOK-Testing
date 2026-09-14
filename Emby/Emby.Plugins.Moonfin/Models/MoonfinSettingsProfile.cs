@@ -9,6 +9,8 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("seerrEnabled")] public bool? SeerrEnabled { get; set; }
         [JsonPropertyName("seerrApiKey")] public string? SeerrApiKey { get; set; }
         [JsonPropertyName("seerrBlockNsfw")] public bool? SeerrBlockNsfw { get; set; }
+        [JsonPropertyName("seerrShowMissingCollectionItems")] public bool? SeerrShowMissingCollectionItems { get; set; }
+        [JsonPropertyName("showSeerrAvailabilityBadges")] public bool? ShowSeerrAvailabilityBadges { get; set; }
         [JsonPropertyName("seerrRows")] public SeerrRowsConfig? SeerrRows { get; set; }
         // Legacy jellyseerr* aliases: read old payloads and keep serializing the old keys for un-migrated clients.
         [JsonPropertyName("jellyseerrEnabled")] public bool? JellyseerrEnabledCompat { get => SeerrEnabled; set { if (value != null) { SeerrEnabled = value; } } }
@@ -64,6 +66,7 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("backdropEnabled")] public bool? BackdropEnabled { get; set; }
         [JsonPropertyName("homeRowsImageTypeOverride")] public bool? HomeRowsImageTypeOverride { get; set; }
         [JsonPropertyName("homeRowsStyle")] public string? HomeRowsStyle { get; set; }
+        [JsonPropertyName("modernCardsOnMyMediaRow")] public bool? ModernCardsOnMyMediaRow { get; set; }
         [JsonPropertyName("modernHomeRowsPadding")] public int? ModernHomeRowsPadding { get; set; }
         [JsonPropertyName("classicHomeRowsPadding")] public int? ClassicHomeRowsPadding { get; set; }
         [JsonPropertyName("fullScreenRows")] public bool? FullScreenRows { get; set; }
@@ -136,6 +139,15 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("screensaverClockMode")] public string? ScreensaverClockMode { get; set; }
         [JsonPropertyName("screensaverMaxAgeRating")] public string? ScreensaverMaxAgeRating { get; set; }
         [JsonPropertyName("screensaverRequireRating")] public bool? ScreensaverRequireRating { get; set; }
+        [JsonPropertyName("screensaverBackdrop")] public string? ScreensaverBackdrop { get; set; }
+        [JsonPropertyName("screensaverComponent")] public string? ScreensaverComponent { get; set; }
+        [JsonPropertyName("screensaverMovement")] public string? ScreensaverMovement { get; set; }
+        [JsonPropertyName("screensaverPosition")] public string? ScreensaverPosition { get; set; }
+        [JsonPropertyName("screensaverSize")] public string? ScreensaverSize { get; set; }
+        [JsonPropertyName("screensaverContentType")] public string? ScreensaverContentType { get; set; }
+        [JsonPropertyName("screensaverLibraryIds")] public List<string>? ScreensaverLibraryIds { get; set; }
+        [JsonPropertyName("screensaverCollectionIds")] public List<string>? ScreensaverCollectionIds { get; set; }
+        [JsonPropertyName("screensaverExcludedGenres")] public List<string>? ScreensaverExcludedGenres { get; set; }
 
         // Subtitles. Colours travel as #AARRGGBB strings so clients that store an int and
         // clients that store a CSS colour can both round-trip them without loss.
@@ -300,6 +312,7 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("use24HourClock")] public bool? Use24HourClock { get; set; }
         [JsonPropertyName("homeRowInfoOverlay")] public bool? HomeRowInfoOverlay { get; set; }
         [JsonPropertyName("showSeerrButton")] public bool? ShowSeerrButton { get; set; }
+        [JsonPropertyName("showDownloadsButton")] public bool? ShowDownloadsButton { get; set; }
         [JsonPropertyName("showServerMessagesButton")] public bool? ShowServerMessagesButton { get; set; }
         [JsonPropertyName("crashReportsEnabled")] public bool? CrashReportsEnabled { get; set; }
         [JsonPropertyName("diagnosticLoggingEnabled")] public bool? DiagnosticLoggingEnabled { get; set; }
@@ -315,6 +328,11 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("mergeRecentRowsByType")] public bool? MergeRecentRowsByType { get; set; }
         [JsonPropertyName("playlistsRowShowEpisodes")] public bool? PlaylistsRowShowEpisodes { get; set; }
         [JsonPropertyName("recentlyReleasedSeriesType")] public string? RecentlyReleasedSeriesType { get; set; }
+        [JsonPropertyName("loadingAnimationImage")] public string? LoadingAnimationImage { get; set; }
+        [JsonPropertyName("loadingAnimationSize")] public string? LoadingAnimationSize { get; set; }
+        [JsonPropertyName("loadingAnimationPosition")] public string? LoadingAnimationPosition { get; set; }
+        [JsonPropertyName("loadingAnimationSpeed")] public string? LoadingAnimationSpeed { get; set; }
+        [JsonPropertyName("showLoadingAnimationText")] public bool? ShowLoadingAnimationText { get; set; }
     }
 
     /// <summary>

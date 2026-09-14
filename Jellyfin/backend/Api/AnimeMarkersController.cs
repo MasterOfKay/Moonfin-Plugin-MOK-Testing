@@ -38,43 +38,28 @@ public class AnimeMarkersController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Whether a marker kind is enabled in the plugin configuration.
-    /// </summary>
-    private static bool IsKindEnabled(AnimeEpisodeKind kind)
+    private static bool IsKindEnabled(PluginConfiguration? configuration, AnimeEpisodeKind kind) => kind switch
     {
-        var configuration = MoonfinPlugin.Instance?.Configuration;
-
-        return kind switch
-        {
-            AnimeEpisodeKind.Filler => configuration?.AnimeMarkerShowFiller != false,
-            AnimeEpisodeKind.Mixed => configuration?.AnimeMarkerShowMixed != false,
-            AnimeEpisodeKind.MangaCanon => configuration?.AnimeMarkerShowMangaCanon == true,
-            AnimeEpisodeKind.AnimeCanon => configuration?.AnimeMarkerShowAnimeCanon == true,
-            _ => false
-        };
-    }
+        AnimeEpisodeKind.Filler => configuration?.AnimeMarkerShowFiller != false,
+        AnimeEpisodeKind.Mixed => configuration?.AnimeMarkerShowMixed != false,
+        AnimeEpisodeKind.MangaCanon => configuration?.AnimeMarkerShowMangaCanon == true,
+        AnimeEpisodeKind.AnimeCanon => configuration?.AnimeMarkerShowAnimeCanon == true,
+        _ => false
+    };
 
     /// <summary>
-    /// Applies the admin's dual-audio preference at the edge, so the classifier keeps
-    /// reporting what a file actually holds regardless of how it is labelled.
+    /// Applies the admin's dual-audio preference at the edge, so the classifier goes on
+    /// reporting what a file actually holds however it ends up labelled.
     /// </summary>
-    private static AnimeAudioKind Present(AnimeAudioKind kind) =>
-        AnimeAudioClassifier.Collapse(
-            kind,
-            MoonfinPlugin.Instance?.Configuration?.AnimeAudioSeparateDualAudio == true);
+    private static AnimeAudioKind Present(AnimeAudioKind kind, bool separateDualAudio) =>
+        AnimeAudioClassifier.Collapse(kind, separateDualAudio);
 
     /// <summary>
     /// Where clients should draw the pills. Passed through rather than interpreted, so a
-    /// client that does not know a placement can fall back to its own default.
+    /// client that doesnt know a placement falls back to its own default.
     /// </summary>
-    private static string Placement =>
-        MoonfinPlugin.Instance?.Configuration?.AnimeMarkerPlacement is { Length: > 0 } value
-            ? value
-            : "below";
-
-    private static bool RecapEnabled =>
-        MoonfinPlugin.Instance?.Configuration?.AnimeMarkerShowRecap != false;
+    private static string PlacementOf(PluginConfiguration? configuration) =>
+        configuration?.AnimeMarkerPlacement is { Length: > 0 } value ? value : "below";
 
     private static TimeSpan CacheMaxAge =>
         TimeSpan.FromDays(Math.Max(1, MoonfinPlugin.Instance?.Configuration?.AnimeMarkerMaxAgeDays ?? 30));
@@ -83,11 +68,9 @@ public class AnimeMarkersController : ControllerBase
     /// Markers for the episodes of one series.
     ///
     /// Reads the cache only and never touches the network, so a client can call it on every
-    /// episode-list render without inheriting an upstream site's latency. A series whose
-    /// data has not been fetched yet answers with <c>pending: true</c>.
-    ///
-    /// Answers with <c>enabled: false</c> rather than an error when the feature is off, so
-    /// a client can call it all the time and simply render nothing.
+    /// episode list render without inheriting an upstream site's latency. A series whose
+    /// table hasnt been fetched yet answers with <c>pending: true</c>, and the feature being
+    /// off answers with <c>enabled: false</c> rather than an error.
     /// </summary>
     [HttpGet("Series")]
     [Authorize]
@@ -104,9 +87,8 @@ public class AnimeMarkersController : ControllerBase
         var fillerEnabled = configuration?.AnimeMarkersEnabled == true;
         var audioEnabled = configuration?.AnimeAudioMarkersEnabled == true;
 
-        // The client can call this endpoint on every episode list render, so it is not an error
-        // when the feature is off: the client simply renders nothing. The admin page can still
-        // call it to see what the feature would do if it were on, so the endpoint.
+        // The client calls this on every episode list render, so the feature being off isnt
+        // an error. The client just draws nothing.
         if (!fillerEnabled && !audioEnabled)
         {
             _diagnostics.Write("  -> answered enabled=false (both marker features are off in settings)");
@@ -156,7 +138,7 @@ public class AnimeMarkersController : ControllerBase
         {
             try
             {
-                if (_resolver.IsAudioMarkerCandidate(series))
+                if (_resolver.IsAudioMarkerCandidateItem(series))
                 {
                     var started = System.Diagnostics.Stopwatch.StartNew();
                     audio = _resolver.BuildAudioMarkers(series);
@@ -174,21 +156,26 @@ public class AnimeMarkersController : ControllerBase
             }
         }
 
-        if (_diagnostics is { } log && AnimeMarkerDiagnosticLog.Enabled)
+        if (AnimeMarkerDiagnosticLog.Enabled)
         {
-            log.Write(
+            _diagnostics.Write(
                 $"  -> matched={result.Slug ?? "(nothing)"} pending={result.Pending} " +
                 $"markers={result.Episodes.Count} recapKnown={result.RecapKnown} " +
                 $"audioEpisodes={audio.Episodes.Count} audioSeasons={audio.Seasons.Count}");
 
-            // The episode ids are the join the client has to match on, so a couple are
-            // written out verbatim: a client that cannot find them is formatting ids
-            // differently, which looks identical to having no data at all.
+            // The episode ids are the join the client matches on, so a couple go out
+            // verbatim. A client that cant find them is formatting ids differently, which
+            // looks identical to having no data at all.
             foreach (var (episodeId, marker) in result.Episodes.Take(3))
             {
-                log.Write($"    sample episodeId={episodeId} kind={marker.Kind} recap={marker.Recap}");
+                _diagnostics.Write($"    sample episodeId={episodeId} kind={marker.Kind} recap={marker.Recap}");
             }
         }
+
+        // Read once instead of per episode. Each of these walks the plugin instance and its
+        // configuration, and a long-running series brings thousands of episodes with it.
+        var recapEnabled = configuration?.AnimeMarkerShowRecap != false;
+        var separateDualAudio = configuration?.AnimeAudioSeparateDualAudio == true;
 
         return Ok(new
         {
@@ -199,9 +186,8 @@ public class AnimeMarkersController : ControllerBase
             pending = result.Pending,
             recapKnown = result.RecapKnown,
 
-            // The episode list is flattened to one row per episode, so a client can render it without
-            // having to know how many files are in each episode. The client can still show the
-            // per-file badge if it wants.
+            // One row per episode, so a client can draw the list without knowing how many
+            // files sit behind each episode.
             episodes = result.Episodes.Keys
                 .Concat(audio.Episodes.Keys)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -212,27 +198,28 @@ public class AnimeMarkersController : ControllerBase
                         result.Episodes.TryGetValue(episodeId, out var marker);
                         var hasAudio = audio.Episodes.TryGetValue(episodeId, out var audioKind);
 
-                        var kind = marker != null && IsKindEnabled(marker.Kind)
+                        var kind = marker != null && IsKindEnabled(configuration, marker.Kind)
                             ? marker.Kind
                             : (AnimeEpisodeKind?)null;
 
-                        var recap = marker?.Recap == true && RecapEnabled;
+                        var recap = marker?.Recap == true && recapEnabled;
 
                         return new
                         {
                             kind,
-                            filler = kind == AnimeEpisodeKind.Filler,
                             recap,
-                            audio = hasAudio ? Present(audioKind) : (AnimeAudioKind?)null
+                            audio = hasAudio
+                                ? Present(audioKind, separateDualAudio)
+                                : (AnimeAudioKind?)null
                         };
                     },
                     StringComparer.OrdinalIgnoreCase),
 
             seasons = audio.Seasons.ToDictionary(
                 pair => pair.Key,
-                pair => new { audio = Present(pair.Value) }),
+                pair => new { audio = Present(pair.Value, separateDualAudio) }),
 
-            placement = Placement
+            placement = PlacementOf(configuration)
         });
     }
 
@@ -260,7 +247,8 @@ public class AnimeMarkersController : ControllerBase
             });
         }
 
-        var candidates = _resolver.GetCandidateSeries();
+        var resolvedLibraries = _resolver.GetSelectedLibraryFolderIds();
+        var candidates = _resolver.GetCandidateSeries(resolvedLibraries);
         var fresh = _cache.GetFreshSlugs(CacheMaxAge);
 
         var matched = new List<object>();
@@ -286,7 +274,6 @@ public class AnimeMarkersController : ControllerBase
         }
 
         var configuredLibraries = configuration?.AnimeMarkerLibraryIds ?? new List<string>();
-        var resolvedLibraries = _resolver.GetSelectedLibraryFolderIds();
 
         return Ok(new
         {
@@ -304,7 +291,7 @@ public class AnimeMarkersController : ControllerBase
             episodesClassified = _cache.TotalEpisodeCount(),
             episodesFlagged = _cache.FlaggedEpisodeCount(),
 
-            // Capped so a large library cannot turn the admin page into a wall of text.
+            // Capped so a large library cant turn the admin page into a wall of text.
             matches = matched.Take(200).ToList(),
             unmatchedCount = unmatched.Count,
             unmatched = unmatched.Take(50).ToList()
@@ -312,8 +299,7 @@ public class AnimeMarkersController : ControllerBase
     }
 
     /// <summary>
-    /// Markers for the audio tracks of one or more items, 
-    /// including subbed/dubbed classification.
+    /// The subbed/dubbed verdict for one or more items.
     /// </summary>
     [HttpGet("Items")]
     [Authorize]
@@ -332,16 +318,20 @@ public class AnimeMarkersController : ControllerBase
             return BadRequest(new { error = "Missing ids" });
         }
 
-        // Capped so one request cannot be turned into an unbounded amount of work.
+        // Capped so one request cant be turned into an unbounded amount of work.
         var requested = ids
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Take(200)
             .ToList();
 
         var moviesEnabled = configuration.AnimeAudioMarkersMovies;
+        var separateDualAudio = configuration.AnimeAudioSeparateDualAudio;
         var answer = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
-        // The client can call this endpoint on every episode list render, so it is not an error
+        // Resolved once for the whole batch. Doing it per item re-reads the configuration and
+        // looks up every configured library again, for each of up to 200 ids.
+        var libraryIds = _resolver.GetSelectedLibraryFolderIds();
+
         var notFound = 0;
         var moviesSkipped = 0;
         var notCandidate = 0;
@@ -372,14 +362,14 @@ public class AnimeMarkersController : ControllerBase
             }
 
             // Movies are opted in separately, because they are where a mixed library is most
-            // likely to put a pill on something that is not anime.
+            // likely to put a pill on something that isnt anime.
             if (item is MediaBrowser.Controller.Entities.Movies.Movie && !moviesEnabled)
             {
                 moviesSkipped++;
                 continue;
             }
 
-            if (!_resolver.IsAudioMarkerCandidateItem(item))
+            if (!_resolver.IsAudioMarkerCandidateItem(item, libraryIds))
             {
                 notCandidate++;
                 continue;
@@ -392,7 +382,7 @@ public class AnimeMarkersController : ControllerBase
                 continue;
             }
 
-            answer[item.Id.ToString("N")] = new { audio = Present(audio.Value) };
+            answer[item.Id.ToString("N")] = new { audio = Present(audio.Value, separateDualAudio) };
         }
 
         _diagnostics.Write(
@@ -401,7 +391,7 @@ public class AnimeMarkersController : ControllerBase
             $"{notCandidate} outside the chosen libraries or not anime, {noAudioTags} with no audio language tags, " +
             $"{notFound} unknown ids)");
 
-        return Ok(new { enabled = true, items = answer, placement = Placement });
+        return Ok(new { enabled = true, items = answer, placement = PlacementOf(configuration) });
     }
 
     /// <summary>
@@ -460,10 +450,7 @@ public class AnimeMarkersController : ControllerBase
         var markersByNumber = entry.Episodes.ToDictionary(episode => episode.Number);
         var numbering = _resolver.BuildNumbering(series);
 
-        // The episode list is flattened to one row per episode, so a client can render it without
-        // having to know how many files are in each episode. The client can still show the
-        // per-file badge if it wants, but the admin page is more interested in the episode
-        // list and the badge's presence there is what the user will notice first.
+        // One row per episode, carrying how many library files sit behind it.
         var rows = numbering.Episodes
             .GroupBy(numbered => (numbered.Episode.ParentIndexNumber, numbered.Episode.IndexNumber))
             .Select(group =>

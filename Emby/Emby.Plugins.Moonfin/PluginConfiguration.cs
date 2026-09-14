@@ -124,6 +124,9 @@ namespace Emby.Plugins.Moonfin
 
         public bool WebEnableWebRtcScan { get; set; } = true;
 
+        /// <summary>Lets Moonfin clients upload diagnostic and crash reports into the server's log folder, where they appear in Dashboard > Logs.</summary>
+        public bool EnableClientLogUpload { get; set; } = true;
+
         /// <summary>Admin-configured default settings. Users who haven't customized a setting inherit this value.</summary>
         public MoonfinSettingsProfile? DefaultUserSettings { get; set; }
 
