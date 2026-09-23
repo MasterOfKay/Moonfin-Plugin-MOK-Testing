@@ -959,6 +959,18 @@
                             <a href="https://thumbnails.libretro.com/" target="_blank">libretro thumbnail server</a>
                             (matched by game name); no API keys or accounts are needed.
                         </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" id="GamesIsolateWebApp" is="emby-checkbox" />
+                                <span>Isolate the web app for PSP games</span>
+                            </label>
+                            <div class="fieldDescription">
+                                PSP games need cross-origin isolation to start in Moonfin Web, and the player only gets
+                                it when the whole app is isolated. Turn this on if PSP games stop with an error, then
+                                reload Moonfin Web. Once it's on, anything cross-origin you've added to the web client
+                                has to allow isolation too.
+                            </div>
+                        </div>
                     </div>
 
                     </section>
@@ -5985,6 +5997,7 @@
                     document.querySelector('#WebEnableWebRtcScan').checked = config.WebEnableWebRtcScan !== false;
 
                     document.querySelector('#GamesEnabled').checked = config.GamesEnabled === true;
+                    document.querySelector('#GamesIsolateWebApp').checked = config.GamesIsolateWebApp === true;
                     loadGameLibraryPicker(config.GameLibraryIds || []);
                     initGameCores();
 
@@ -6759,6 +6772,7 @@
                         config.WebEnableWebRtcScan = document.querySelector('#WebEnableWebRtcScan').checked;
 
                         config.GamesEnabled = document.querySelector('#GamesEnabled').checked;
+                        config.GamesIsolateWebApp = document.querySelector('#GamesIsolateWebApp').checked;
                         config.GameLibraryIds = Array.prototype.slice.call(
                             document.querySelectorAll('.gameLibraryCb:checked')
                         ).map(function (cb) { return cb.getAttribute('data-id'); });
