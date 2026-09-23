@@ -115,7 +115,7 @@ jobs:
             if (areaLines) apply(AREAS, selected(areaLines));
 
             // Both bug forms ask for the server as free text, so the answers run
-            // from "Jellyfin 10.11.8" through "JF10.11.11 / MB 2.2.0.0" to a bare
+            // from "Jellyfin 10.11.8" through "JF10.11.11 / MB 2.3.0.0" to a bare
             // version. Only a leading version number is inferred, and only when
             // neither name was given, since Jellyfin numbers 10.x and Emby 4.x.
             const serverLines = section(body, /^server type and version\b/i);
