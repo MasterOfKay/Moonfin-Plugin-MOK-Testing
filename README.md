@@ -72,7 +72,7 @@ Moonbase serves the Moonfin web app on your own server, so you can open and book
 <details>
 <summary><b>Advanced:</b> a Moonfin button in the stock Jellyfin web header</summary>
 
-On Jellyfin, you can add a one-click Moonfin button to the stock web header (next to SyncPlay) by installing the [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) plugin:
+On Jellyfin, you can add a one-click Moonfin button to the stock web header (next to your user icon) by installing the [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) plugin:
 
 1. Add its plugin repository: `https://www.iamparadox.dev/jellyfin/plugins/manifest.json`
 2. Install **File Transformation** from the catalog and restart Jellyfin.
@@ -95,14 +95,19 @@ On Emby, the web app is served the same way at `/Moonfin/Web/`, but there's no h
 - **Cross-device settings sync**, so your preferences follow you between web, TV, mobile, and desktop, with an optional per-device profile for desktop, mobile, and TV.
 - **The Moonfin web app** hosted at `/Moonfin/Web/`, running side by side with the stock web interface.
 - **Media bar and home screen data** resolved on the server and shared across clients.
+- **Recommendations scored on the server** (Jellyfin), matching similar titles on genres, tags, people, studios, franchise, release year and rating, and only showing what each user is allowed to see. On Jellyfin 12 the same scoring reaches every client, including the stock web interface.
 - **Extra rating sources** through MDBList and TMDB, with the API keys kept on the server.
+- **Next air dates** for series, taken from the Sonarr your Seerr is connected to, or from TMDB through the server when there's no Sonarr.
+- **Anime filler and recap markers** (Jellyfin) that badge episodes as Filler, Mixed, Recap or canon using AnimeFillerList and MyAnimeList, plus Subbed and Dubbed pills read from the audio tracks in your own files. No account or API key needed.
 - **Seerr integration** with a built-in proxy, single sign-on, and optional request and issue notifications. The step-by-step guide is [Seerr Setup](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Setup).
 - **Push notifications** that reach Moonfin apps even when they are closed, covering Seerr activity, new media added to your library, and admin broadcasts. See [Seerr Notifications](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Notifications).
 - **Admin tools** for setting server-wide defaults across every client setting, pushing them to existing users, and broadcasting a message to everyone at once.
-- **Server messages**: an admin can write a note (title, Markdown body, colour, audience, start and end dates, an optional link button) that shows up in people's apps, even if they were offline when it was sent.
+- **Settings backup and restore** (Jellyfin): Moonbase keeps a spare copy of your server-wide settings and offers to put it back if they ever come back reset.
+- **App reports on Emby**, so the apps' Send report to server button works there too. Jellyfin has this built in.
+- **Server messages**: an admin can write a note (title, Markdown body, color, audience, start and end dates, an optional link button) that shows up in people's apps, even if they were offline when it was sent.
 - **Custom themes** with a built-in editor, plus server-side upload and validation.
-- **Retro games** support for browsing and playing game libraries, with saves synced per user. See [Retro Games](https://github.com/Moonfin-Client/Plugin/wiki/Retro-Games).
-- **Custom rows** built from MDBList and IMDb lists, cached on the server.
+- **Retro games** support for browsing and playing game libraries, with saves synced per user. On Jellyfin, an optional switch lets PSP games start in the web app. See [Retro Games](https://github.com/Moonfin-Client/Plugin/wiki/Retro-Games).
+- **Custom rows** built from Letterboxd, TMDB, MDBList and IMDb lists, cached on the server.
 - **An active downloads dashboard** with live transcode metrics in the admin panel, plus a per-client view so a transcoded download can show its own progress and ETA.
 - **Personal ratings served back to clients**, so a library can be sorted by your own rating and filtered by liked or disliked, which neither server can do on its own.
 - **Audiobook bookmarks and notes** stored on the server and synced between clients.
@@ -114,6 +119,7 @@ Open your server dashboard, go to Plugins, and select **Moonbase**. The [Admin G
 - Your Seerr URL and whether Seerr is enabled
 - Shared MDBList and TMDB API keys, so individual users don't need their own
 - Whether Moonbase Sync is on (required for the Seerr and ratings integrations)
+- On Jellyfin, anime markers and whether Moonfin Recommends handles similar items
 - Default user settings that new users inherit, with a button to push them to existing users
 - Server messages and the quick broadcast
 - Web startup options and custom theme uploads
@@ -133,12 +139,12 @@ The deeper reference material lives in the [Wiki](https://github.com/Moonfin-Cli
 
 | Page | What it covers |
 |------|----------------|
-| [Installation](https://github.com/Moonfin-Client/Plugin/wiki/Installation) | The Jellyfin catalogue route, the Emby zip, the first things to switch on, updating and uninstalling |
+| [Installation](https://github.com/Moonfin-Client/Plugin/wiki/Installation) | The Jellyfin catalog route, the Emby zip, the first things to switch on, updating and uninstalling |
 | [Admin Guide](https://github.com/Moonfin-Client/Plugin/wiki/Admin-Guide) | The plugin page tab by tab, the scheduled tasks, and what differs on Emby |
-| [Common Problems](https://github.com/Moonfin-Client/Plugin/wiki/Common-Problems) | Plain fixes for catalogue, web app, sync, Seerr, ratings, rows and games trouble |
+| [Common Problems](https://github.com/Moonfin-Client/Plugin/wiki/Common-Problems) | Plain fixes for catalog, web app, header button, sync, reset settings, Seerr, ratings, rows, anime markers and games trouble |
 | [API Reference](https://github.com/Moonfin-Client/Plugin/wiki/API-Reference) | Every plugin endpoint, with methods, auth, the Seerr config response, and the server messages endpoints |
 | [Settings Sync](https://github.com/Moonfin-Client/Plugin/wiki/Settings-Sync) | How sync works, the settings envelope, and the full list of synced settings |
-| [Data Locations](https://github.com/Moonfin-Client/Plugin/wiki/Data-Locations) | Where the plugin stores user settings, themes, saves, and caches on the server |
+| [Data Locations](https://github.com/Moonfin-Client/Plugin/wiki/Data-Locations) | Where the plugin stores user settings, themes, saves, caches, and the settings backup on the server |
 | [Retro Games](https://github.com/Moonfin-Client/Plugin/wiki/Retro-Games) | Game libraries, cores, ROMs, BIOS, saves, and in-browser play |
 | [Seerr Setup](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Setup) | The plain step-by-step guide to connecting Seerr |
 | [Seerr Notifications](https://github.com/Moonfin-Client/Plugin/wiki/Seerr-Notifications) | Push delivery, webhooks, notification types, and self-hosted relays |
