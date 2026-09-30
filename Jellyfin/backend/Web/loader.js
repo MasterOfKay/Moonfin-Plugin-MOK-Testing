@@ -191,6 +191,20 @@
   var TOOLBAR_USER_SELECTOR =
     'button[aria-controls="app-user-menu"], button[aria-label*="UserMenu"], button[aria-label*="User"], .MuiAvatar-root';
 
+  // Jellyfin's own row of header buttons. Other plugins can sit between it and
+  // the avatar box, and MUI gives it a generated class name, so walk back and
+  // match it by computed style.
+  function findToolbarButtonRow(userBox) {
+    for (var el = userBox.previousElementSibling; el; el = el.previousElementSibling) {
+      if (el.tagName !== "DIV") continue;
+      var css = window.getComputedStyle(el);
+      if (css.display.indexOf("flex") !== -1 && css.justifyContent === "flex-end") {
+        return el;
+      }
+    }
+    return null;
+  }
+
   function injectIntoToolbar(toolbar) {
     if (!toolbar || !isElementVisible(toolbar)) return false;
 
@@ -200,6 +214,15 @@
     if (userBtn) {
       var userBox = userBtn.closest(".MuiToolbar-root > *");
       if (userBox && userBox !== toolbar && userBox.parentNode === toolbar) {
+        // Jellyfin Enhanced puts its buttons inside whatever sits right before
+        // the avatar box, so join the native row instead of taking that spot.
+        var buttonRow = findToolbarButtonRow(userBox);
+        if (buttonRow) {
+          if (btn && btn.parentNode === buttonRow) return true;
+          if (!btn) btn = createMoonfinButton();
+          buttonRow.appendChild(btn);
+          return true;
+        }
         if (userBox.previousElementSibling === btn) {
           return true;
         }
