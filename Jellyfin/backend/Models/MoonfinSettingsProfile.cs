@@ -924,6 +924,13 @@ public class MoonfinSettingsProfile
     [JsonPropertyName("showServerMessagesButton")]
     public bool? ShowServerMessagesButton { get; set; }
 
+    /// <summary>
+    /// Friends button for the Achievement Badges plugin. Clients only show it
+    /// when that plugin has friends turned on.
+    /// </summary>
+    [JsonPropertyName("showFriendsButton")]
+    public bool? ShowFriendsButton { get; set; }
+
     [JsonPropertyName("diagnosticLoggingEnabled")]
     public bool? DiagnosticLoggingEnabled { get; set; }
 

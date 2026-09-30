@@ -1587,6 +1587,15 @@
                                     <option value="false">No</option>
                                 </select>
                             </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="DefaultShowFriendsButton">Show Friends Button</label>
+                                <select id="DefaultShowFriendsButton" is="emby-select">
+                                    <option value="">Not set (user decides)</option>
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <div class="fieldDescription">Only shows where the Achievement Badges plugin has friends turned on.</div>
+                            </div>
                         </div>
 
                         <!-- 4. Home Screen -->
@@ -6125,6 +6134,7 @@
                     setNullableBoolSelect('#DefaultShowLiveTvButton', defaults.showLiveTvButton);
                     setNullableBoolSelect('#DefaultShowDownloadsButton', defaults.showDownloadsButton);
                     setNullableBoolSelect('#DefaultShowServerMessagesButton', defaults.showServerMessagesButton);
+                    setNullableBoolSelect('#DefaultShowFriendsButton', defaults.showFriendsButton);
 
                     setSelectValue('#DefaultMediaBarSourceType', defaults.mediaBarSourceType, 'Configured source');
                     loadAdminGenrePicker(defaults.mediaBarExcludedGenres || []);
@@ -6928,6 +6938,7 @@
                         config.DefaultUserSettings.showLiveTvButton = getNullableBoolSelect('#DefaultShowLiveTvButton');
                         config.DefaultUserSettings.showDownloadsButton = getNullableBoolSelect('#DefaultShowDownloadsButton');
                         config.DefaultUserSettings.showServerMessagesButton = getNullableBoolSelect('#DefaultShowServerMessagesButton');
+                        config.DefaultUserSettings.showFriendsButton = getNullableBoolSelect('#DefaultShowFriendsButton');
 
                         config.DefaultUserSettings.mediaBarSourceType = document.querySelector('#DefaultMediaBarSourceType').value || null;
                         var genreIds = [];
