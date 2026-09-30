@@ -126,9 +126,6 @@ namespace Emby.Plugins.Moonfin.Services
             if (removed > 0) Write(userId, prefs);
         }
 
-        /// <summary>Enumerates users who opted in to new-request notifications.</summary>
-        public IEnumerable<Guid> GetUsersWantingNewRequests() => EnumerateUsers(p => p.NotifyOnNewRequests);
-
         /// <summary>Enumerates users who opted in to new-media (any library addition) notifications.</summary>
         public IEnumerable<Guid> GetUsersWantingNewMedia() => EnumerateUsers(p => p.NotifyOnNewMedia);
 
@@ -199,9 +196,9 @@ namespace Emby.Plugins.Moonfin.Services
     public class NotificationPrefs
     {
         [JsonPropertyName("jellyfinUserId")] public Guid JellyfinUserId { get; set; }
-        [JsonPropertyName("notifyOnNewRequests")] public bool NotifyOnNewRequests { get; set; }
         // These default to true to match the client toggles, which show enabled before the
         // first prefs sync ever reaches the server.
+        [JsonPropertyName("notifyOnNewRequests")] public bool NotifyOnNewRequests { get; set; } = true;
         [JsonPropertyName("notifyOnLibraryAdded")] public bool NotifyOnLibraryAdded { get; set; } = true;
         [JsonPropertyName("notifyOnIssues")] public bool NotifyOnIssues { get; set; } = true;
         // Defaults false (opt-in): fires for ANY library addition, not just requested media.

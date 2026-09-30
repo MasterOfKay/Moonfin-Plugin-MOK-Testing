@@ -148,9 +148,6 @@ public class NotificationStore
         }
     }
 
-    /// <summary>Enumerates users who opted in to new-request notifications.</summary>
-    public IEnumerable<Guid> GetUsersWantingNewRequests() => EnumerateUsers(p => p.NotifyOnNewRequests);
-
     /// <summary>Enumerates users who opted in to library-added notifications.</summary>
     public IEnumerable<Guid> GetUsersWantingLibraryAdded() => EnumerateUsers(p => p.NotifyOnLibraryAdded);
 
@@ -237,11 +234,11 @@ public class NotificationPrefs
     [JsonPropertyName("jellyfinUserId")]
     public Guid JellyfinUserId { get; set; }
 
-    [JsonPropertyName("notifyOnNewRequests")]
-    public bool NotifyOnNewRequests { get; set; }
-
     // These default to true to match the client toggles, which show enabled
     // before the first prefs sync ever reaches the server.
+    [JsonPropertyName("notifyOnNewRequests")]
+    public bool NotifyOnNewRequests { get; set; } = true;
+
     [JsonPropertyName("notifyOnLibraryAdded")]
     public bool NotifyOnLibraryAdded { get; set; } = true;
 

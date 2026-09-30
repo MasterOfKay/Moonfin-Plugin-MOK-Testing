@@ -114,20 +114,12 @@ public class SeerrWebhookService
         var requesterJellyfinId = GetRequesterJellyfinId(payload);
         var requestId = GetRequestId(payload);
 
-        foreach (var userId in _store.GetUsersWantingNewRequests())
+        var recipients = NewRequestRecipients(
+            _sessionService.EnumerateSessions(),
+            userId => _store.GetPrefs(userId).NotifyOnNewRequests,
+            requesterJellyfinId);
+        foreach (var userId in recipients)
         {
-            if (requesterJellyfinId.HasValue && userId == requesterJellyfinId.Value)
-            {
-                continue;
-            }
-
-            var session = _sessionService.EnumerateSessions()
-                .FirstOrDefault(s => s.JellyfinUserId == userId);
-            if (session == null || !CanManageRequests(session))
-            {
-                continue;
-            }
-
             Deliver(userId, tmdbId, "MEDIA_PENDING", title, body, route, requestId);
         }
 
@@ -369,6 +361,21 @@ public class SeerrWebhookService
             }
         }
     }
+
+    /// <summary>
+    /// Everyone who can manage requests and hasn't turned new-request notifications off, once
+    /// each, leaving out whoever made the request. Read from Seerr sessions rather than saved
+    /// notification settings, since the app shows this on before it has saved anything.
+    /// </summary>
+    internal static IEnumerable<Guid> NewRequestRecipients(
+        IEnumerable<SeerrSession> sessions,
+        Func<Guid, bool> wantsNewRequests,
+        Guid? requesterJellyfinId) =>
+        sessions
+            .Where(CanManageRequests)
+            .Select(s => s.JellyfinUserId)
+            .Distinct()
+            .Where(id => id != requesterJellyfinId && wantsNewRequests(id));
 
     private static bool CanManageRequests(SeerrSession session)
     {
