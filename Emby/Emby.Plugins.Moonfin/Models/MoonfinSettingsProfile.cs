@@ -209,6 +209,9 @@ namespace Emby.Plugins.Moonfin.Models
         [JsonPropertyName("hiddenDetailMetadataTv")] public List<string>? HiddenDetailMetadataTv { get; set; }
         [JsonPropertyName("hiddenDetailMetadataMobile")] public List<string>? HiddenDetailMetadataMobile { get; set; }
         [JsonPropertyName("hiddenDetailMetadataDesktop")] public List<string>? HiddenDetailMetadataDesktop { get; set; }
+        [JsonPropertyName("hiddenDetailSectionsTv")] public List<string>? HiddenDetailSectionsTv { get; set; }
+        [JsonPropertyName("hiddenDetailSectionsMobile")] public List<string>? HiddenDetailSectionsMobile { get; set; }
+        [JsonPropertyName("hiddenDetailSectionsDesktop")] public List<string>? HiddenDetailSectionsDesktop { get; set; }
         [JsonPropertyName("videoStartDelay")] public int? VideoStartDelay { get; set; }
         [JsonPropertyName("liveTvDirectPlayEnabled")] public bool? LiveTvDirectPlayEnabled { get; set; }
         [JsonPropertyName("maxBitrate")] public string? MaxBitrate { get; set; }

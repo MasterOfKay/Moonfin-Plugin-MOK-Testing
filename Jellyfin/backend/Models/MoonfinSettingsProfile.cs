@@ -587,6 +587,15 @@ public class MoonfinSettingsProfile
     [JsonPropertyName("hiddenDetailMetadataDesktop")]
     public List<string>? HiddenDetailMetadataDesktop { get; set; }
 
+    [JsonPropertyName("hiddenDetailSectionsTv")]
+    public List<string>? HiddenDetailSectionsTv { get; set; }
+
+    [JsonPropertyName("hiddenDetailSectionsMobile")]
+    public List<string>? HiddenDetailSectionsMobile { get; set; }
+
+    [JsonPropertyName("hiddenDetailSectionsDesktop")]
+    public List<string>? HiddenDetailSectionsDesktop { get; set; }
+
     [JsonPropertyName("videoStartDelay")]
     public int? VideoStartDelay { get; set; }
 
