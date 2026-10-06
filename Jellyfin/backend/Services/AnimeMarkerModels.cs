@@ -97,7 +97,8 @@ public class AnimeTitleAliasEntry
     public int? MalId { get; set; }
 
     /// <summary>
-    /// English title, then romaji, then synonyms. Empty when AniList had no entry.</summary>
+    /// English title, then romaji, then synonyms. Empty when AniList had no entry.
+    /// </summary>
     [JsonPropertyName("titles")]
     public List<string> Titles { get; set; } = new();
 

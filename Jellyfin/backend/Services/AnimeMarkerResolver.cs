@@ -176,7 +176,7 @@ public class AnimeMarkerResolver
     /// <summary>
     /// Fetches the provider-id titles for every series whose library title matches nothing.
     /// Series that already match by title are left alone, so a library that works today
-    /// will not change.
+    /// wont change.
     /// </summary>
     public Task<int> RefreshAliasesAsync(IEnumerable<Series> series, CancellationToken cancellationToken) =>
         _aliases.RefreshAsync(
@@ -192,12 +192,9 @@ public class AnimeMarkerResolver
             : null;
 
     /// <summary>
-    /// Every series that matches a show on the site, paired with the show. Used both by the
-    /// sync task to decide what to fetch and by the diagnostics endpoint.
+    /// Every one of these series that matches a show on the site, paired with the show. The
+    /// sync task uses it to decide what to fetch.
     /// </summary>
-    public List<SeriesMatch> BuildMatches() => BuildMatches(GetCandidateSeries());
-
-    /// <summary>The same, over series the caller has already gathered.</summary>
     public List<SeriesMatch> BuildMatches(IEnumerable<Series> candidates)
     {
         var matches = new List<SeriesMatch>();

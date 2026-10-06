@@ -421,7 +421,6 @@ public class AnimeMarkersController : ControllerBase
 
         _diagnostics.Write($"preview  series=\"{series.Name}\" (from the admin page)");
 
-        // Sync the id to a englisch/romanji title.
         await _resolver.RefreshAliasesAsync(new[] { series }, cancellationToken).ConfigureAwait(false);
 
         var match = _resolver.MatchSeriesDetailed(series);

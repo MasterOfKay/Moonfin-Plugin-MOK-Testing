@@ -6,7 +6,7 @@ namespace Moonfin.Server.Tests;
 
 /// <summary>
 /// Tests the fallback that matches a series with a localized library name through the
-/// English and romaji titles AniList holds for its provider ids (issue #310).
+/// English and romaji titles AniList holds for its provider ids.
 /// </summary>
 public class AnimeTitleAliasTests
 {

@@ -183,11 +183,6 @@ public class AnimeIdMappingService
     }
 
     /// <summary>
-    /// Returns true when the mapping table has been loaded, either from disk or from a download.
-    /// </summary>
-    public bool IsLoaded => _index != null;
-
-    /// <summary>
     /// Resolves one provider id, given by the canonical names <see cref="AnimeTitleAliasService"/>
     /// uses ("anidb", "tvdb", ...), to a MyAnimeList id. Returns null when it isnt in the table.
     /// </summary>

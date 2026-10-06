@@ -157,13 +157,7 @@ public class AnimeTitleAliasService : FileBackedCacheService<AnimeTitleAliasEntr
                 }
             }
 
-            if (byAniListId.Count == 0 && byMalId.Count == 0)
-            {
-                return 0;
-            }
-
-            var stored = 0;
-            stored += await FetchAndStoreAsync("id_in", byAniListId, media => media.Id, cancellationToken).ConfigureAwait(false);
+            var stored = await FetchAndStoreAsync("id_in", byAniListId, media => media.Id, cancellationToken).ConfigureAwait(false);
             stored += await FetchAndStoreAsync("idMal_in", byMalId, media => media.MalId, cancellationToken).ConfigureAwait(false);
 
             if (stored > 0)
