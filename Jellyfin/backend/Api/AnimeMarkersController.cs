@@ -62,6 +62,13 @@ public class AnimeMarkersController : ControllerBase
     private static string PlacementOf(PluginConfiguration? configuration) =>
         configuration?.AnimeMarkerPlacement is { Length: > 0 } value ? value : "below";
 
+    /// <summary>
+    /// What clients should show for the audio pills: "full" for Subbed / Dubbed / Subbed/Dubbed,
+    /// or "short" for Sub / Dub / Sub/Dub. Read by the clients.
+    /// </summary>
+    private static string LabelStyleOf(PluginConfiguration? configuration) =>
+        configuration?.AnimeAudioLabelStyle is { Length: > 0 } value ? value : "full";
+
     private static TimeSpan CacheMaxAge =>
         TimeSpan.FromDays(Math.Max(1, MoonfinPlugin.Instance?.Configuration?.AnimeMarkerMaxAgeDays ?? 30));
 
@@ -220,7 +227,8 @@ public class AnimeMarkersController : ControllerBase
                 pair => pair.Key,
                 pair => new { audio = Present(pair.Value, separateDualAudio) }),
 
-            placement = PlacementOf(configuration)
+            placement = PlacementOf(configuration),
+            labelStyle = LabelStyleOf(configuration)
         });
     }
 
@@ -392,7 +400,7 @@ public class AnimeMarkersController : ControllerBase
             $"{notCandidate} outside the chosen libraries or not anime, {noAudioTags} with no audio language tags, " +
             $"{notFound} unknown ids)");
 
-        return Ok(new { enabled = true, items = answer, placement = PlacementOf(configuration) });
+        return Ok(new { enabled = true, items = answer, placement = PlacementOf(configuration), labelStyle = LabelStyleOf(configuration) });
     }
 
     /// <summary>

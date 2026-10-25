@@ -548,7 +548,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-checkbox', 'em
         { parent: 'DefaultEnableSonarrCalendar', fields: ['DefaultSonarrCalendarShowDate', 'DefaultSonarrCalendarShowEpisodeInfo', 'DefaultMergeRadarrSonarrCalendars'] },
         { parent: 'MdblistOfficialListsEnabled', fields: ['MdblistOfficialListsMaxItems'] },
         { parent: 'AnimeMarkersEnabled', fields: ['AnimeMarkerRecapLookup', 'AnimeMarkerShowFiller', 'AnimeMarkerMaxAgeDays'] },
-        { parent: 'AnimeAudioMarkersEnabled', fields: ['AnimeAudioMarkersMovies', 'AnimeAudioSeparateDualAudio'] },
+        { parent: 'AnimeAudioMarkersEnabled', fields: ['AnimeAudioMarkersMovies', 'AnimeAudioSeparateDualAudio', 'AnimeAudioLabelStyle'] },
         { parent: ['AnimeMarkersEnabled', 'AnimeAudioMarkersEnabled'], fields: ['AnimeMarkerLibraryPicker', 'AnimeAudioTrustSelectedLibraries', 'AnimeMarkerPlacement', 'AnimeMarkerDiagBtn', 'AnimeMarkerPreviewName', 'AnimeMarkerVerboseLogging', 'AnimeMarkerLogBtn'] },
         { parent: 'GamesEnabled', fields: ['GameCoresStatus', 'GameCoresFile', 'GameLibraryPicker', 'GamesRommUrl', 'GamesRommToken', 'GamesRommLibraryId', 'GamesRommTestBtn'] },
         { parent: 'DefaultNavbarPosition', off: ['top', 'left'], fields: ['DefaultBottomNavbarStyle', 'DefaultBottomNavbarTab1'] },
@@ -2333,6 +2333,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-checkbox', 'em
             view.querySelector('#AnimeAudioSeparateDualAudio').checked = config.AnimeAudioSeparateDualAudio === true;
             view.querySelector('#AnimeAudioTrustSelectedLibraries').checked = config.AnimeAudioTrustSelectedLibraries === true;
             view.querySelector('#AnimeMarkerPlacement').value = config.AnimeMarkerPlacement || 'below';
+            view.querySelector('#AnimeAudioLabelStyle').value = config.AnimeAudioLabelStyle || 'full';
             view.querySelector('#AnimeMarkerShowFiller').checked = config.AnimeMarkerShowFiller !== false;
             view.querySelector('#AnimeMarkerShowMixed').checked = config.AnimeMarkerShowMixed !== false;
             view.querySelector('#AnimeMarkerShowRecap').checked = config.AnimeMarkerShowRecap !== false;
@@ -2676,6 +2677,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-checkbox', 'em
             config.AnimeAudioSeparateDualAudio = view.querySelector('#AnimeAudioSeparateDualAudio').checked;
             config.AnimeAudioTrustSelectedLibraries = view.querySelector('#AnimeAudioTrustSelectedLibraries').checked;
             config.AnimeMarkerPlacement = view.querySelector('#AnimeMarkerPlacement').value || 'below';
+            config.AnimeAudioLabelStyle = view.querySelector('#AnimeAudioLabelStyle').value || 'full';
             config.AnimeMarkerShowFiller = view.querySelector('#AnimeMarkerShowFiller').checked;
             config.AnimeMarkerShowMixed = view.querySelector('#AnimeMarkerShowMixed').checked;
             config.AnimeMarkerShowRecap = view.querySelector('#AnimeMarkerShowRecap').checked;

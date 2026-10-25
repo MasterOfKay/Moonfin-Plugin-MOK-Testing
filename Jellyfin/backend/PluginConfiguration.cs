@@ -183,6 +183,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public string AnimeMarkerPlacement { get; set; } = "below";
 
+    /// <summary>
+    /// How a client should word the audio pills: "full" for Subbed / Dubbed / Subbed/Dubbed,
+    /// or "short" for Sub / Dub / Sub/Dub.
+    /// </summary>
+    public string AnimeAudioLabelStyle { get; set; } = "full";
+
     // ---------------------------------------------------------------------
     // Which pills a client is allowed to draw
     // ---------------------------------------------------------------------

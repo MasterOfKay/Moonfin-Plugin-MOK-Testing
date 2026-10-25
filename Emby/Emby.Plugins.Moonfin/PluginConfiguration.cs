@@ -145,6 +145,9 @@ namespace Emby.Plugins.Moonfin
         /// <summary>"below", "beside" or "thumbnail". The server only passes it along to clients.</summary>
         public string AnimeMarkerPlacement { get; set; } = "below";
 
+        /// <summary>"full" or "short" wording for the Anime markers pills.</summary>
+        public string AnimeAudioLabelStyle { get; set; } = "full";
+
         public bool AnimeMarkerShowFiller { get; set; } = true;
 
         public bool AnimeMarkerShowMixed { get; set; } = true;

@@ -62,6 +62,10 @@ namespace Emby.Plugins.Moonfin.Api
         private static string PlacementOf(PluginConfiguration? configuration) =>
             string.IsNullOrEmpty(configuration?.AnimeMarkerPlacement) ? "below" : configuration!.AnimeMarkerPlacement;
 
+        // A client that doesnt know a style keeps its full labels.
+        private static string LabelStyleOf(PluginConfiguration? configuration) =>
+            string.IsNullOrEmpty(configuration?.AnimeAudioLabelStyle) ? "full" : configuration!.AnimeAudioLabelStyle;
+
         private static TimeSpan CacheMaxAge =>
             TimeSpan.FromDays(Math.Max(1, Plugin.Instance?.Configuration?.AnimeMarkerMaxAgeDays ?? 30));
 
@@ -199,7 +203,8 @@ namespace Emby.Plugins.Moonfin.Api
                     pair => pair.Key,
                     pair => new { audio = AnimeAudioClassifier.Collapse(pair.Value, separateDualAudio) }),
 
-                placement = PlacementOf(configuration)
+                placement = PlacementOf(configuration),
+                labelStyle = LabelStyleOf(configuration)
             });
         }
 
@@ -285,7 +290,7 @@ namespace Emby.Plugins.Moonfin.Api
                 $"{notCandidate} outside the chosen libraries or not anime, {noAudioTags} with no audio language tags, " +
                 $"{notFound} unknown ids)");
 
-            return Json(new { enabled = true, items = answer, placement = PlacementOf(configuration) });
+            return Json(new { enabled = true, items = answer, placement = PlacementOf(configuration), labelStyle = LabelStyleOf(configuration) });
         }
 
         /// <summary>

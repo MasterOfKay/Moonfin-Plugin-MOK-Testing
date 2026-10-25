@@ -1169,6 +1169,16 @@
                             </div>
                         </div>
                         <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AnimeAudioLabelStyle">Audio pill wording</label>
+                            <select is="emby-select" id="AnimeAudioLabelStyle">
+                                <option value="full">Full: Subbed / Dubbed / Subbed/Dubbed</option>
+                                <option value="short">Short: Sub / Dub / Sub/Dub</option>
+                            </select>
+                            <div class="fieldDescription">
+                                Full wording is longer while on Phones and Tablets a shorter label fits better.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="AnimeMarkerPlacement">Where to put the pills</label>
                             <select is="emby-select" id="AnimeMarkerPlacement">
                                 <option value="below">Below the runtime</option>
@@ -4230,7 +4240,7 @@
                 { parent: 'MdblistOfficialListsEnabled', fields: ['MdblistOfficialListsMaxItems'] },
                 { parent: 'LiveTvDetectIncompleteRecordings', fields: ['LiveTvAutoRecordCompleteShowing', 'LiveTvDeleteIncompleteCopies', 'LiveTvIncompleteThresholdPercent'] },
                 { parent: 'AnimeMarkersEnabled', fields: ['AnimeMarkerRecapLookup', 'AnimeMarkerShowFiller', 'AnimeMarkerMaxAgeDays'] },
-                { parent: 'AnimeAudioMarkersEnabled', fields: ['AnimeAudioMarkersMovies', 'AnimeAudioSeparateDualAudio'] },
+                { parent: 'AnimeAudioMarkersEnabled', fields: ['AnimeAudioMarkersMovies', 'AnimeAudioSeparateDualAudio', 'AnimeAudioLabelStyle'] },
                 { parent: ['AnimeMarkersEnabled', 'AnimeAudioMarkersEnabled'], fields: ['AnimeMarkerLibraryPicker', 'AnimeAudioTrustSelectedLibraries', 'AnimeMarkerPlacement', 'AnimeMarkerDiagBtn', 'AnimeMarkerPreviewName', 'AnimeMarkerVerboseLogging', 'AnimeMarkerLogBtn'] },
                 { parent: 'GamesEnabled', fields: ['GameCoresStatus', 'GameCoresFile', 'GameLibraryPicker', 'GamesRommUrl', 'GamesRommToken', 'GamesRommLibraryId', 'GamesRommTestBtn'] },
                 { parent: 'DefaultNavbarPosition', off: ['top', 'left'], fields: ['DefaultBottomNavbarStyle', 'DefaultBottomNavbarTab1'] },
@@ -7048,6 +7058,7 @@
                     document.querySelector('#AnimeAudioSeparateDualAudio').checked = config.AnimeAudioSeparateDualAudio === true;
                     document.querySelector('#AnimeAudioTrustSelectedLibraries').checked = config.AnimeAudioTrustSelectedLibraries === true;
                     document.querySelector('#AnimeMarkerPlacement').value = config.AnimeMarkerPlacement || 'below';
+                    document.querySelector('#AnimeAudioLabelStyle').value = config.AnimeAudioLabelStyle || 'full';
                     document.querySelector('#AnimeMarkerShowFiller').checked = config.AnimeMarkerShowFiller !== false;
                     document.querySelector('#AnimeMarkerShowMixed').checked = config.AnimeMarkerShowMixed !== false;
                     document.querySelector('#AnimeMarkerShowRecap').checked = config.AnimeMarkerShowRecap !== false;
@@ -7904,6 +7915,7 @@
                         config.AnimeAudioSeparateDualAudio = document.querySelector('#AnimeAudioSeparateDualAudio').checked;
                         config.AnimeAudioTrustSelectedLibraries = document.querySelector('#AnimeAudioTrustSelectedLibraries').checked;
                         config.AnimeMarkerPlacement = document.querySelector('#AnimeMarkerPlacement').value || 'below';
+                        config.AnimeAudioLabelStyle = document.querySelector('#AnimeAudioLabelStyle').value || 'full';
                         config.AnimeMarkerShowFiller = document.querySelector('#AnimeMarkerShowFiller').checked;
                         config.AnimeMarkerShowMixed = document.querySelector('#AnimeMarkerShowMixed').checked;
                         config.AnimeMarkerShowRecap = document.querySelector('#AnimeMarkerShowRecap').checked;
