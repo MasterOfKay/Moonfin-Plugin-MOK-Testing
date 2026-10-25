@@ -89,6 +89,38 @@ public class AnimeFillerListParserTests
     }
 
     [Fact]
+    public void ParseEpisodes_ReadsTitleAndAirDate()
+    {
+        // Copied from the site's Pokémon table, which is the show air dates were added for.
+        const string row = """
+            <tr class="manga_canon odd" id="eps-11"><td class="Number">11</td><td class="Title"><a href="/shows/pokemon/charmander-%E2%80%93-stray-pok%C3%A9mon" rel="nofollow">Charmander-The Stray Pok&eacute;mon</a></td><td class="Type"><span>Manga Canon</span></td><td class="Date">1997-06-10</td> </tr>
+            """;
+
+        var episode = Assert.Single(AnimeFillerListParser.ParseEpisodes(row));
+
+        Assert.Equal("Charmander-The Stray Pokémon", episode.Title);
+        Assert.Equal(new DateTime(1997, 6, 10), episode.AirDate);
+    }
+
+    [Fact]
+    public void ParseEpisodes_DoesNotBorrowTheNextRowsCells()
+    {
+        // The first row has no title or date of its own, so reading past its end would hand
+        // it the second row's air date and pair it with the wrong episode.
+        const string rows = """
+            <tr class="filler odd" id="eps-1"><td class="Number">1</td></tr>
+            <tr class="filler even" id="eps-2"><td class="Number">2</td><td class="Title">Two</td><td class="Date">2001-01-08</td></tr>
+            """;
+
+        var episodes = AnimeFillerListParser.ParseEpisodes(rows);
+
+        Assert.Null(episodes[0].Title);
+        Assert.Null(episodes[0].AirDate);
+        Assert.Equal("Two", episodes[1].Title);
+        Assert.Equal(new DateTime(2001, 1, 8), episodes[1].AirDate);
+    }
+
+    [Fact]
     public void ParseEpisodes_ReturnsEmptyForUnrelatedMarkup()
     {
         Assert.Empty(AnimeFillerListParser.ParseEpisodes("<html><body>Not found</body></html>"));

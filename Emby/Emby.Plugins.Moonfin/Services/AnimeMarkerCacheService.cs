@@ -43,6 +43,7 @@ namespace Emby.Plugins.Moonfin.Services
         public void Set(string slug, AnimeMarkerCacheEntry entry)
         {
             entry.CachedAt = DateTimeOffset.UtcNow;
+            entry.Format = AnimeMarkerCacheEntry.CurrentFormat;
             EnsureLoaded()[KeyFor(slug)] = entry;
         }
 
@@ -54,6 +55,7 @@ namespace Emby.Plugins.Moonfin.Services
             foreach (var pair in EnsureLoaded())
             {
                 if (pair.Key.StartsWith(KeyPrefix, StringComparison.OrdinalIgnoreCase) &&
+                    pair.Value.Format >= AnimeMarkerCacheEntry.CurrentFormat &&
                     now - pair.Value.CachedAt < maxAge)
                 {
                     slugs.Add(pair.Key.Substring(KeyPrefix.Length));

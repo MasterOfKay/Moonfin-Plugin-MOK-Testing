@@ -152,7 +152,7 @@ namespace Emby.Plugins.Moonfin.Api
             {
                 Diagnostics.Write(
                     $"  -> matched={result.Slug ?? "(nothing)"} pending={result.Pending} " +
-                    $"markers={result.Episodes.Count} recapKnown={result.RecapKnown} " +
+                    $"markers={result.Episodes.Count} matchedBy={result.MatchMode ?? "-"} recapKnown={result.RecapKnown} " +
                     $"audioEpisodes={audio.Episodes.Count} audioSeasons={audio.Seasons.Count}");
 
                 // The episode ids are what the client matches on, so a couple go out verbatim. A
@@ -417,27 +417,26 @@ namespace Emby.Plugins.Moonfin.Api
                 });
             }
 
-            var markersByNumber = new Dictionary<int, AnimeMarkerEpisode>();
-            foreach (var episode in entry.Episodes)
-            {
-                markersByNumber[episode.Number] = episode;
-            }
-
-            var numbering = Resolver.BuildNumbering(series);
+            var matched = Resolver.MatchEpisodes(series, entry);
+            var numbering = matched.Numbering;
 
             // One row per episode slot, with how many library files sit behind it.
             var rows = numbering.Episodes
-                .GroupBy(numbered => (numbered.Episode.ParentIndexNumber, numbered.Episode.IndexNumber))
+                .GroupBy(numbered => (numbered.Episode.ParentIndexNumber!.Value, numbered.Episode.IndexNumber!.Value))
                 .Select(group =>
                 {
                     var numbered = group.First();
-                    markersByNumber.TryGetValue(numbered.AbsoluteNumber, out var marker);
+                    matched.BySlot.TryGetValue(group.Key, out var marker);
 
                     return new
                     {
                         season = numbered.Episode.ParentIndexNumber,
                         index = numbered.Episode.IndexNumber,
                         absolute = numbered.AbsoluteNumber,
+
+                        // The site's number for the paired episode. Differs from the absolute
+                        // number only when the air dates did the pairing.
+                        siteNumber = marker?.Number,
                         name = numbered.Episode.Name,
                         kind = marker?.Kind.ToString(),
                         recap = marker?.Recap ?? false,
@@ -458,6 +457,10 @@ namespace Emby.Plugins.Moonfin.Api
                 pending = false,
                 recapKnown = entry.RecapMalId != null,
                 numbering = numbering.Mode,
+                matchedBy = matched.Match.Mode,
+                datedEpisodes = matched.Match.DatedEpisodes,
+                numberAgreements = matched.Match.NumberAgreements,
+                airDatesKnown = entry.Format >= AnimeMarkerCacheEntry.CurrentFormat,
                 showEpisodes = entry.Episodes.Count,
                 libraryEpisodes = rows.Count,
                 libraryFiles = numbering.Episodes.Count,

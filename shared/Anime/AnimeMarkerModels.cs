@@ -56,6 +56,19 @@ public class AnimeMarkerEpisode
     /// </summary>
     [JsonPropertyName("recap")]
     public bool Recap { get; set; }
+
+    /// <summary>
+    /// The episode's title as the site lists it, which is usually the English dub title. Only
+    /// used to tell apart two episodes that aired on the same day.
+    /// </summary>
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// The original air date the site lists. Null in tables cached before dates were read.
+    /// </summary>
+    [JsonPropertyName("airDate")]
+    public DateTime? AirDate { get; set; }
 }
 
 /// <summary>
@@ -63,6 +76,15 @@ public class AnimeMarkerEpisode
 /// </summary>
 public class AnimeMarkerCacheEntry
 {
+    /// <summary>
+    /// The format tables are parsed in today. Format 2 added each episode's title and air
+    /// date, so an older entry still serves its markers but is fetched again on the next sync.
+    /// </summary>
+    public const int CurrentFormat = 2;
+
+    [JsonPropertyName("format")]
+    public int Format { get; set; }
+
     [JsonPropertyName("slug")]
     public string Slug { get; set; } = string.Empty;
 

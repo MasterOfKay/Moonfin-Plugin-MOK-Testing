@@ -236,17 +236,14 @@ public class AnimeMarkerResolver
             return result;
         }
 
-        var byNumber = new Dictionary<int, AnimeMarkerEpisode>();
-        foreach (var episode in entry.Episodes)
-        {
-            byNumber[episode.Number] = episode;
-        }
-
         result.RecapKnown = entry.RecapMalId != null;
 
-        foreach (var numbered in BuildNumbering(series).Episodes)
+        var matched = MatchEpisodes(series, entry);
+        result.MatchMode = matched.Match.Mode;
+
+        foreach (var numbered in matched.Numbering.Episodes)
         {
-            if (byNumber.TryGetValue(numbered.AbsoluteNumber, out var marker))
+            if (matched.BySlot.TryGetValue(SlotOf(numbered.Episode), out var marker))
             {
                 result.Episodes[numbered.Episode.Id.ToString("N")] = marker;
             }
@@ -254,6 +251,42 @@ public class AnimeMarkerResolver
 
         return result;
     }
+
+    /// <summary>
+    /// Pairs a series' episodes with a show's cached table, by absolute number unless the air
+    /// dates show the numbers are off. The result is keyed by season and episode number, so
+    /// every copy of an episode gets the same marker.
+    /// </summary>
+    public EpisodeMarkerMatch MatchEpisodes(Series series, AnimeMarkerCacheEntry entry)
+    {
+        var numbering = BuildNumbering(series);
+
+        var slots = numbering.Episodes
+            .GroupBy(numbered => SlotOf(numbered.Episode))
+            .OrderBy(group => group.First().AbsoluteNumber)
+            .ToList();
+
+        var match = AnimeEpisodeMatcher.Match(
+            slots.Select(group => new AnimeEpisodeSlot(
+                group.First().AbsoluteNumber,
+                group.Select(numbered => numbered.Episode.PremiereDate).FirstOrDefault(date => date != null),
+                group.First().Episode.Name)).ToList(),
+            entry.Episodes);
+
+        var bySlot = new Dictionary<(int Season, int Index), AnimeMarkerEpisode>();
+        for (var i = 0; i < slots.Count; i++)
+        {
+            if (match.Markers[i] is { } marker)
+            {
+                bySlot[slots[i].Key] = marker;
+            }
+        }
+
+        return new EpisodeMarkerMatch(numbering, match, bySlot);
+    }
+
+    private static (int Season, int Index) SlotOf(Episode episode) =>
+        (episode.ParentIndexNumber!.Value, episode.IndexNumber!.Value);
 
     public AnimeAudioKind? GetAudioForItem(BaseItem item)
     {
@@ -573,6 +606,15 @@ public record NumberedEpisode(Episode Episode, int AbsoluteNumber);
 /// </summary>
 public record SeriesNumbering(string Mode, IReadOnlyList<NumberedEpisode> Episodes);
 
+/// <summary>
+/// A series' episodes paired with a show's table: the numbering, how the pairing was
+/// decided, and the marker for each season/episode slot that matched.
+/// </summary>
+public record EpisodeMarkerMatch(
+    SeriesNumbering Numbering,
+    AnimeEpisodeMatchResult Match,
+    IReadOnlyDictionary<(int Season, int Index), AnimeMarkerEpisode> BySlot);
+
 /// <summary>What the client gets back for one series.</summary>
 public class SeriesMarkerResult
 {
@@ -587,6 +629,9 @@ public class SeriesMarkerResult
 
     /// <summary>True when the series matched a show whose table hasnt been fetched yet.</summary>
     public bool Pending { get; set; }
+
+    /// <summary>How the episodes were paired with the table: "number" or "airdate".</summary>
+    public string? MatchMode { get; set; }
 
     /// <summary>
     /// True when the recap pass has run for this show. When false, an episode's recap flag

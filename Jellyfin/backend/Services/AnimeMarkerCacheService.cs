@@ -47,6 +47,7 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
     public void Set(string slug, AnimeMarkerCacheEntry entry)
     {
         entry.CachedAt = DateTimeOffset.UtcNow;
+        entry.Format = AnimeMarkerCacheEntry.CurrentFormat;
         EnsureLoaded()[KeyFor(slug)] = entry;
     }
 
@@ -58,7 +59,9 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
     public void Update(string slug, AnimeMarkerCacheEntry entry) =>
         EnsureLoaded()[KeyFor(slug)] = entry;
 
-    /// <summary>Slugs whose cached table is still fresh, so the next sync can skip them.</summary>
+    /// <summary>
+    /// Slugs whose cached table is still fresh, so the next sync can skip them.
+    /// </summary>
     public HashSet<string> GetFreshSlugs(TimeSpan maxAge)
     {
         var cache = EnsureLoaded();
@@ -68,6 +71,7 @@ public class AnimeMarkerCacheService : FileBackedCacheService<AnimeMarkerCacheEn
         foreach (var (key, entry) in cache)
         {
             if (key.StartsWith(KeyPrefix, StringComparison.OrdinalIgnoreCase) &&
+                entry.Format >= AnimeMarkerCacheEntry.CurrentFormat &&
                 now - entry.CachedAt < maxAge)
             {
                 slugs.Add(key[KeyPrefix.Length..]);
