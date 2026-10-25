@@ -9,12 +9,12 @@
     "imageUrl": "https://raw.githubusercontent.com/Moonfin-Client/Plugin/master/Jellyfin/backend/assets/logo.png",
     "versions": [
       {
-        "version": "2.4.0.1",
-        "changelog": "Test build for issue #344: new Audio pill wording setting under Anime markers, so clients can show Sub / Dub / Sub/Dub instead of Subbed / Dubbed / Subbed/Dubbed.",
+        "version": "2.4.0.2",
+        "changelog": "Test build for issue #344: new Audio pill wording setting under Anime markers, so clients can show Sub / Dub / Sub/Dub instead of Subbed / Dubbed / Subbed/Dubbed. Also fixes the stretched toggles in the Anime markers section.",
         "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/v2.4.0.1-test/Moonfin.Server-2.4.0.1.zip",
-        "checksum": "B9BB8E10D777E5264E4609FD6C8F7E91",
-        "timestamp": "2026-10-25T11:46:00",
+        "sourceUrl": "https://github.com/MasterOfKay/Moonfin-Plugin-MOK-Testing/releases/download/v2.4.0.2-test/Moonfin.Server-2.4.0.2.zip",
+        "checksum": "3730BCFDA89948EF2895A79D97DF19FA",
+        "timestamp": "2026-10-25T12:27:00",
         "dependencies": []
       }
     ]
